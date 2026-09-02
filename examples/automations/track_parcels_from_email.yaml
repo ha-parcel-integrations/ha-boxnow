@@ -1,0 +1,98 @@
+# Extract BoxNow tracking codes from incoming e-mail and register them
+# with `boxnow.track_parcel`, so parcels start tracking the moment the
+# shipping confirmation lands in your inbox — no manual entry.
+#
+# Requirements:
+#   - one or more core IMAP config entries with "text" enabled under
+#     "message data" and the max message size raised (carrier mails are
+#     long) — full setup guide and pitfalls: track_parcels_from_email.md
+#   - optional: an `ai_task` entity for the AI fallback branch; delete
+#     the whole `else:` block if you don't use one
+#   - PRIVACY: by default this fires on EVERY incoming mail and (with the
+#     AI branch) can send mail bodies to your AI Task. Scope the IMAP
+#     search to the carrier's sender first — see "Scope & privacy" in the .md.
+#
+# No regex fast path: BoxNow's tracking-code format is unconfirmed
+# (the integration itself accepts any free text — see CLAUDE.md), so there is
+# no known prefix/length to anchor a regex on without risking false matches
+# against order/invoice numbers. This recipe goes straight to the AI
+# fallback; swap in a regex_findall() variable here yourself once you know
+# your own confirmation e-mails' format.
+
+alias: "BoxNow: track from e-mail"
+description: >-
+  Listens to imap_content events from all IMAP entries and uses an AI Task to
+  extract a BoxNow tracking code from mails that look like a shipping
+  notification.
+mode: queued
+max: 10
+
+triggers:
+  - trigger: event
+    event_type: imap_content
+
+variables:
+  sender: "{{ trigger.event.data.sender | default('') | lower }}"
+  subject: "{{ trigger.event.data.subject | default('') }}"
+  body: "{{ trigger.event.data.text | default('') }}"
+  content: "{{ subject ~ ' ' ~ body }}"
+  # Keyword gate for the AI fallback — localise to your language(s).
+  is_parcel_mail: >-
+    {{ content | lower is search('package|shipped|out for delivery|track|shipment|delivery') }}
+
+conditions:
+  # initial=true means "new message"; false means a duplicate trigger of
+  # the SAME message (e.g. after a reconnect) — requiring it is free dedup.
+  - condition: template
+    value_template: "{{ trigger.event.data.initial | default(true) }}"
+  - condition: template
+    value_template: "{{ is_parcel_mail }}"
+
+actions:
+  # Requires an ai_task entity (e.g. Anthropic/Claude, Google, OpenAI) — see
+  # Prerequisites in track_parcels_from_email.md. There is no regex fast
+  # path here (unlike other carriers' versions of this recipe): BoxNow
+  # Greece's tracking-code format is unconfirmed.
+  - action: ai_task.generate_data
+    data:
+      task_name: boxnow-tracking-code-extraction
+      entity_id: ai_task.your_ai_task_entity
+      instructions: >-
+        Below is an e-mail. Determine whether it contains a BoxNow
+        parcel tracking code. Only return a real tracking/trace code, never
+        an order, customer or invoice number. If the mail is from a
+        different carrier, answer 'other'. When in doubt: 'none'.
+
+        Sender: {{ sender }}
+        Subject: {{ subject }}
+        Body:
+        {{ body[:6000] }}
+      structure:
+        carrier:
+          description: Whether a BoxNow tracking code was found
+          required: true
+          selector:
+            select:
+              options: ["boxnow", "other", "none"]
+        tracking_code:
+          description: The tracking code, or empty if none
+          required: false
+          selector:
+            text:
+    response_variable: ai_result
+  - choose:
+      - conditions: "{{ ai_result.data.carrier == 'boxnow' and (ai_result.data.tracking_code | default('') | trim) != '' }}"
+        sequence:
+          - action: boxnow.track_parcel
+            data:
+              tracking_code: "{{ ai_result.data.tracking_code | trim }}"
+          - action: notify.mobile_app_your_phone
+            data:
+              title: "📦 BoxNow parcel picked up from mail"
+              message: "{{ ai_result.data.tracking_code | trim }} (mail from {{ sender }})"
+      - conditions: "{{ ai_result.data.carrier == 'other' and (ai_result.data.tracking_code | default('') | trim) != '' }}"
+        sequence:
+          - action: notify.mobile_app_your_phone
+            data:
+              title: "📦 Tracking number found – not a BoxNow parcel"
+              message: "{{ ai_result.data.tracking_code | trim }} (mail from {{ sender }}, subject: {{ subject }})"
