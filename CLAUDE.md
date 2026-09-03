@@ -1,7 +1,8 @@
 # Working in this repository
 
-Home Assistant custom integration for **BoxNow** (boxnow.gr, GR) parcel
-tracking. Distributed via HACS; not part of HA core. One carrier in the
+Home Assistant custom integration for **BoxNow** parcel tracking — a locker
+network live in Bulgaria (.bg), Greece (.gr), Croatia (.hr) and Cyprus (.cy).
+Distributed via HACS; not part of HA core. One carrier in the
 [ha-parcel-integrations](https://github.com/ha-parcel-integrations) suite,
 **generated from ha-carrier-template** — everything outside *Carrier-specific
 notes* is suite-wide; when in doubt check the template or a sibling repo.
@@ -48,6 +49,30 @@ public JSON tracking endpoint, no account/API key/cookie. Full API mechanics
 (endpoint, headers, envelope, status vocabulary) live in the private research
 repo at `carrier-research/api/boxnow/` — this section is the
 HA-integration decisions that survived the build.
+
+**Country selector — one backend per country, identical payload shape.**
+BoxNow runs the same tracking API per country, keyed only by domain:
+`api-production.boxnow.{bg,gr,hr,cy}`. Confirmed 2026-09 with one live
+tracking code (`4090533096`) queried against all four hosts directly — the
+response bodies were byte-identical. `const.py`'s `BOXNOW_API_URLS` /
+`BOXNOW_TRACKING_URLS` hold one entry per country; `CONF_COUNTRY` is chosen
+once in the config flow's `user` step and stored in the entry's **`data`**
+(not `options` — it selects the backend, not a display preference, and
+`single_config_entry` means there is only ever one to pick). `__init__.py`
+resolves it to an API URL for `BoxNowApiClient`; `coordinator.py` passes it
+through to `normalize_parcel(..., country=...)` so `url` uses the right
+country's deep-link template. Because the payload shape is identical
+everywhere, `CAPABILITIES` stays a flat frozenset — **do not** switch to
+`CAPABILITIES_BY_VARIANT` for this carrier; that pattern is for carriers
+whose backends genuinely differ in what they return, which BoxNow's four
+don't. An entry created before this selector existed has no `CONF_COUNTRY` in
+its data; every read site falls back to `DEFAULT_COUNTRY` ("GR", the
+originally-hardcoded backend) rather than crashing.
+
+**Tracking-link paths differ per country and are maintainer-sourced, not
+independently captured** (same Cloudflare 403-on-everything caveat as
+before): `boxnow.bg/homepage?track=`, `boxnow.gr/homepage-gr?track=`,
+`boxnow.hr/?track=`, `boxnow.cy/?track=`.
 
 **Pre-1.0 status vocabulary — the central caveat of this repo.** Six
 consented live lookups only ever confirmed two top-level `state` values:
@@ -118,17 +143,11 @@ always `None`; `CAPABILITIES` in `const.py` only declares `url` and
 calendar are wired (suite parity) but can never fire/populate until a
 confirmed ETA field turns up.
 
-**`url` deep-link format: domain confirmed, exact path not independently
-verified by capture.** `TRACKING_URL` is `https://boxnow.gr/en?track=<parcelId>`.
-`tracking.boxnow.gr` (this repo's earlier placeholder) turned out to be
-NXDOMAIN — it never existed; `boxnow.gr` does, resolves to real Cloudflare
-IPs, and is the correct base domain. The exact `/en?track=` path/query came
-from the maintainer directly (with a live example ID) rather than from one of
-the six research-repo samples; Cloudflare bot-protection returns 403 for
-every path on this host regardless of parameter, so a captured-200
-confirmation was not obtainable in this session. Treat it as maintainer-
-sourced, not live-confirmed, until a real browser round-trip is recorded in
-`carrier-research/api/boxnow/`.
+**`url` deep-link format: see the country-selector section above** —
+`BOXNOW_TRACKING_URLS` replaced the earlier single `TRACKING_URL` constant
+(`boxnow.gr/en?track=`), which was itself already maintainer-sourced rather
+than captured. Treat all four templates the same way until a real browser
+round-trip is recorded in `carrier-research/api/boxnow/`.
 
 **Tracking-code format is unconfirmed.** `config_flow.py` accepts any
 non-empty free text and only trims surrounding whitespace — no case-folding,

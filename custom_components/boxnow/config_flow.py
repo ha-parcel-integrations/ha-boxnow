@@ -16,6 +16,8 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    BOXNOW_API_URLS,
+    CONF_COUNTRY,
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
@@ -84,21 +86,37 @@ class BoxNowConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Create the BoxNow hub — single instance, no input needed.
+        """Ask which BoxNow country backend to poll, then create the hub.
 
         Tracking is keyed on the tracking code alone (no account, no postal
-        code), so there is nothing to ask at setup: the entry is created
-        straight away and parcels are added afterwards via the options flow,
-        the ``boxnow.track_parcel`` service or a dashboard button.
-        ``single_config_entry`` in the manifest enforces one hub. The
-        confirmed endpoint keys tracking on ``parcelId`` alone — no postcode
-        or other second field.
+        code), so the country selector is the only setup input needed —
+        BoxNow runs a separate API host per country (``BOXNOW_API_URLS``),
+        confirmed to serve the identical payload shape everywhere, so this
+        choice only changes which host is polled and which tracking link is
+        shown. Parcels are added afterwards via the options flow, the
+        ``boxnow.track_parcel`` service or a dashboard button.
+        ``single_config_entry`` in the manifest enforces one hub.
         """
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
+
+        if user_input is None:
+            schema = vol.Schema(
+                {
+                    vol.Required(CONF_COUNTRY): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=list(BOXNOW_API_URLS),
+                            translation_key=CONF_COUNTRY,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    )
+                }
+            )
+            return self.async_show_form(step_id="user", data_schema=schema)
+
         return self.async_create_entry(
             title="BoxNow",
-            data={},
+            data={CONF_COUNTRY: user_input[CONF_COUNTRY]},
             options={
                 CONF_PARCELS: [],
                 CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,

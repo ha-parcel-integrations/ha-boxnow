@@ -59,23 +59,38 @@ CAPABILITIES = frozenset({"url", "history"})
 # preemptively: a single-backend carrier (the common case) keeps the flat
 # CAPABILITIES above.
 
-# ``TRACKING_API_URL`` is the consumer tracking endpoint the integration polls:
-# a single ``POST`` for every request, the tracking code goes in the JSON body
+# BoxNow runs the identical backend per country, keyed only by the domain
+# (verified 2026-09: the same live tracking code, queried against
+# api-production.boxnow.{bg,gr,hr,cy}, returned byte-identical bodies) — one
+# ``POST`` for every request, the tracking code goes in the JSON body
 # (``{"parcelId": "<code>"}``), not the URL — see api.py. No auth: no cookie,
 # API key or bearer token is sent. Response envelope is ``{"data": [...]}``,
 # JSON, HTTP 200 on success. The exact body for an unknown parcelId was never
 # captured (six consented live lookups only ever returned known parcels).
-#
-# ``TRACKING_URL`` is the human-facing deep link surfaced on each parcel's
-# ``url`` field. The per-parcel path/query format was not in the six research
-# samples; ``tracking.boxnow.gr`` (this file's earlier placeholder) does not
-# even resolve (NXDOMAIN) — ``boxnow.gr`` does, and is the real, live,
-# Cloudflare-fronted site. The ``/en?track=<parcelId>`` path is not
-# independently confirmed by a captured 200 (Cloudflare bot-protection
-# returns 403 for every path on this host, real code or not) — see
-# carrier-research's api/tracking.md for the confidence tier on this field.
-TRACKING_API_URL = "https://api-production.boxnow.gr/api/v1/parcels:track"
-TRACKING_URL = "https://boxnow.gr/en?track={tracking_code}"
+# Chosen once at setup (``CONF_COUNTRY`` in the config entry's ``data``, not
+# ``options`` — it selects the backend, not a display preference) and never
+# guessed: a single-backend fallback would silently poll the wrong country.
+CONF_COUNTRY = "country"
+
+BOXNOW_API_URLS: dict[str, str] = {
+    "BG": "https://api-production.boxnow.bg/api/v1/parcels:track",
+    "GR": "https://api-production.boxnow.gr/api/v1/parcels:track",
+    "HR": "https://api-production.boxnow.hr/api/v1/parcels:track",
+    "CY": "https://api-production.boxnow.cy/api/v1/parcels:track",
+}
+
+# Human-facing deep link surfaced on each parcel's ``url`` field, one per
+# country. Maintainer-sourced (not independently captured — Cloudflare
+# bot-protection 403s every path on these hosts regardless of parameter, real
+# code or not), each the country site's own homepage tracking path.
+BOXNOW_TRACKING_URLS: dict[str, str] = {
+    "BG": "https://boxnow.bg/homepage?track={tracking_code}",
+    "GR": "https://boxnow.gr/homepage-gr?track={tracking_code}",
+    "HR": "https://boxnow.hr/?track={tracking_code}",
+    "CY": "https://boxnow.cy/?track={tracking_code}",
+}
+
+DEFAULT_COUNTRY = "GR"
 
 # Tracked parcels live in the config entry options as a list of
 # ``{tracking_code}`` dicts — this carrier has no account or parcel feed, so the

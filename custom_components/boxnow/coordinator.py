@@ -20,9 +20,11 @@ from homeassistant.util import dt as dt_util
 
 from .api import BoxNowApiClient, BoxNowApiError
 from .const import (
+    CONF_COUNTRY,
     CONF_INCLUDE_HISTORY,
     CONF_PARCELS,
     CONF_TRACKING_CODE,
+    DEFAULT_COUNTRY,
     DEFAULT_INCLUDE_HISTORY,
     DOMAIN,
     HOT_INTERVAL_MINUTES,
@@ -148,6 +150,11 @@ class BoxNowCoordinator(DataUpdateCoordinator[list[dict]]):
             update_interval=timedelta(minutes=HOT_INTERVAL_MINUTES),
         )
         self._client = client
+        # Selected once at setup (config entry data, not options — it picks
+        # the backend, not a display preference). Falls back to the
+        # pre-country-selector default for an entry created before this was
+        # added.
+        self._country = entry.data.get(CONF_COUNTRY, DEFAULT_COUNTRY)
         self.delivered: list[dict] = []
         # tracking_code -> last successful raw payload, so a transient fetch
         # failure or a not-found blip keeps the parcel visible instead of
@@ -291,7 +298,8 @@ class BoxNowCoordinator(DataUpdateCoordinator[list[dict]]):
 
         include_history = self._include_history
         normalized = [
-            normalize_parcel(raw, include_history=include_history) for raw in raws
+            normalize_parcel(raw, country=self._country, include_history=include_history)
+            for raw in raws
         ]
         active = [parcel for parcel in normalized if not parcel["delivered"]]
         delivered = [parcel for parcel in normalized if parcel["delivered"]]

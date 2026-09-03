@@ -16,8 +16,6 @@ from typing import Any
 
 import aiohttp
 
-from .const import TRACKING_API_URL
-
 _LOGGER = logging.getLogger(__name__)
 
 # Browser-like headers only — no cookie, API key or account credential is
@@ -61,9 +59,10 @@ class BoxNowApiClient:
     matching an invented shape.
     """
 
-    def __init__(self, session: aiohttp.ClientSession) -> None:
-        """Initialise the client with an aiohttp session."""
+    def __init__(self, session: aiohttp.ClientSession, api_url: str) -> None:
+        """Initialise the client with an aiohttp session and country backend."""
         self._session = session
+        self._api_url = api_url
 
     async def async_get_parcel(self, tracking_code: str) -> dict[str, Any] | None:
         """Fetch one parcel's tracking details.
@@ -74,7 +73,7 @@ class BoxNowApiClient:
         propagate as ``aiohttp.ClientError``.
         """
         async with self._session.post(
-            TRACKING_API_URL,
+            self._api_url,
             json={"parcelId": tracking_code},
             headers=_HEADERS,
         ) as response:

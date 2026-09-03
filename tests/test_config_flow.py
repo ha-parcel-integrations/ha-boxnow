@@ -7,6 +7,7 @@ from custom_components.boxnow.config_flow import (
     valid_tracking_code,
 )
 from custom_components.boxnow.const import (
+    CONF_COUNTRY,
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
@@ -30,13 +31,25 @@ def test_valid_tracking_code_accepts_any_non_empty_free_text():
     assert not valid_tracking_code("")
 
 
-async def test_user_flow_creates_hub_without_input(hass):
-    """No account, no postcode — the entry is created straight away."""
+async def test_user_flow_shows_country_form(hass):
+    """No account, no postcode — the only setup input is the country."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "user"}
     )
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+
+
+async def test_user_flow_creates_hub_for_selected_country(hass):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_COUNTRY: "HR"}
+    )
     assert result["type"] == "create_entry"
     assert result["title"] == "BoxNow"
+    assert result["data"][CONF_COUNTRY] == "HR"
     assert result["options"][CONF_PARCELS] == []
 
 

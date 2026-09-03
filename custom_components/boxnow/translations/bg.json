@@ -1,0 +1,159 @@
+{
+  "title": "BoxNow",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Настройка на BoxNow",
+        "description": "Проследяването с BoxNow не изисква акаунт или пощенски код — изберете от коя държава да се използва бекендът на BoxNow. Колетите се добавят след това чрез опциите на интеграцията или услугата `boxnow.track_parcel`.",
+        "data": {
+          "country": "Държава"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "BoxNow вече е настроен."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Опции на BoxNow",
+        "menu_options": {
+          "parcels": "Управление на колети",
+          "settings": "Настройки"
+        },
+        "sections": {
+          "parcels": {
+            "name": "Колети",
+            "data": {
+              "add": "Добавяне на колет",
+              "remove": "Премахване на колети"
+            },
+            "data_description": {
+              "add": "Въведете код за проследяване на BoxNow, за да го проследите. Ще го намерите в потвърждението за изпращане или на картата за пропусната доставка."
+            }
+          },
+          "delivered": {
+            "name": "Доставени колети",
+            "data": {
+              "delivered_filter_type": "Филтриране по",
+              "delivered_filter_amount": "Брой"
+            },
+            "data_description": {
+              "delivered_filter_type": "Показва доставени колети от последните X дни или ограничава до последните X.",
+              "delivered_filter_amount": "Брой дни или колети за показване."
+            }
+          },
+          "history": {
+            "name": "История на колета",
+            "data": {
+              "include_history": "Включване на история на статуса"
+            },
+            "data_description": {
+              "include_history": "Добавя атрибут с история за всеки колет, изброяващ всяка промяна на статуса (час, статус, оригинален текст). По подразбиране е изключено."
+            }
+          }
+        }
+      },
+      "parcels": {
+        "title": "Управление на колети",
+        "data": {
+          "tracking_codes": "Кодове за проследяване"
+        }
+      },
+      "settings": {
+        "title": "Настройки",
+        "data": {
+          "delivered_filter_type": "Доставени колети: филтриране по",
+          "delivered_filter_amount": "Доставени колети: брой",
+          "include_history": "Включване на история на статуса"
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Това не прилича на код за проследяване на BoxNow.",
+      "already_tracked": "Този колет вече се проследява."
+    }
+  },
+  "selector": {
+    "delivered_filter_type": {
+      "options": {
+        "days": "Дни",
+        "parcels": "Брой колети"
+      }
+    },
+    "country": {
+      "options": {
+        "BG": "България",
+        "GR": "Гърция",
+        "HR": "Хърватия",
+        "CY": "Кипър"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Проследяване на колет",
+      "description": "Започва проследяване на колет по неговия код за проследяване на BoxNow.",
+      "fields": {
+        "tracking_code": {
+          "name": "Код за проследяване",
+          "description": "Кодът за проследяване на BoxNow."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Спиране на проследяването на колет",
+      "description": "Спира проследяването на колет по неговия код за проследяване на BoxNow.",
+      "fields": {
+        "tracking_code": {
+          "name": "Код за проследяване",
+          "description": "Кодът за проследяване на BoxNow, който да спре да се проследява."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Колет беше регистриран",
+      "parcel_status_changed": "Статусът на колет се промени",
+      "parcel_delivered": "Колет беше доставен",
+      "parcel_delivery_time_changed": "Очакваното време за доставка на колет се промени"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Обновяване"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Доставки"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Пристигащи колети",
+        "unit_of_measurement": "колети"
+      },
+      "next_delivery": {
+        "name": "Следваща доставка"
+      },
+      "awaiting_pickup": {
+        "name": "Готови за вземане",
+        "unit_of_measurement": "колети"
+      },
+      "delivered_parcels": {
+        "name": "Доставени колети",
+        "unit_of_measurement": "колети"
+      },
+      "last_update": {
+        "name": "Последно успешно обновяване"
+      },
+      "parcel": {
+        "name": "Колет {barcode}"
+      }
+    }
+  }
+}

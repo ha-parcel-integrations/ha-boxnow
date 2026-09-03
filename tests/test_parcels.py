@@ -10,6 +10,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 import custom_components.boxnow.parcels as parcels_module
 from custom_components.boxnow.const import (
+    BOXNOW_TRACKING_URLS,
     CAPABILITIES,
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
@@ -27,6 +28,7 @@ from custom_components.boxnow.parcels import (
     parse_iso,
     sort_parcels_by_ts,
     to_iso_timestamp,
+    tracking_url,
 )
 
 from .payloads import (
@@ -277,7 +279,7 @@ def test_normalize_delivered_parcel():
     assert parcel["delivered_at"] == "2026-04-29T13:12:42Z"
     assert parcel["planned_from"] is None
     assert parcel["planned_to"] is None
-    assert parcel["url"] == "https://boxnow.gr/en?track=EXAMPLE123456"
+    assert parcel["url"] == "https://boxnow.gr/homepage-gr?track=EXAMPLE123456"
     assert parcel["weight"] is None
     assert parcel["dimensions"] is None
     assert parcel["history"] is None  # opt-in, default off
@@ -377,6 +379,21 @@ def test_normalize_pending_placeholder():
     assert parcel["weight"] is None
     assert parcel["dimensions"] is None
     assert parcel["history"] is None
+
+
+def test_tracking_url_uses_the_selected_countrys_template():
+    """Every country was confirmed to serve the identical payload shape
+
+    (see const.py) — only the deep-link template varies."""
+    for country, template in BOXNOW_TRACKING_URLS.items():
+        assert tracking_url("EXAMPLE123456", country) == template.format(
+            tracking_code="EXAMPLE123456"
+        )
+
+
+def test_normalize_parcel_url_follows_the_country_argument():
+    parcel = normalize_parcel(delivered_sample(), country="HR")
+    assert parcel["url"] == "https://boxnow.hr/?track=EXAMPLE123456"
 
 
 def test_normalize_never_leaks_payment_or_recipient_fields_into_raw():

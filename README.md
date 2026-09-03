@@ -12,7 +12,7 @@
 > request/response shape, the `delivered`/`missing` statuses) is
 > live-confirmed.
 
-A custom Home Assistant integration that tracks your [BoxNow](https://boxnow.gr/) parcels — a Greek locker/pickup-point network. No account is needed — you enter the tracking code yourself, just like on the BoxNow website.
+A custom Home Assistant integration that tracks your [BoxNow](https://boxnow.gr/) parcels — a locker/pickup-point network running in Bulgaria, Greece, Croatia and Cyprus. No account is needed — you enter the tracking code yourself, just like on the BoxNow website.
 
 Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) family: it publishes the same canonical parcel format, statuses and events as the other carrier integrations, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
 
@@ -38,6 +38,7 @@ Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) 
 
 ## Features
 
+- Bulgaria, Greece, Croatia and Cyprus backends — pick your country at setup
 - Track any number of BoxNow parcels by tracking code — no account needed
 - Per-parcel sensor with the canonical status (`delivered` / `problem` / `unknown` for now — see below), the carrier's own status text and a tracking deep-link
 - Summary sensors: incoming parcels, next delivery, awaiting pickup, recently delivered parcels
@@ -67,7 +68,7 @@ Copy `custom_components/boxnow` into your `config/custom_components/` folder and
 
 ## Configuration
 
-Add the integration via **Settings → Devices & Services → Add Integration → BoxNow**. There is nothing to fill in: the hub is created immediately (BoxNow tracking needs no account).
+Add the integration via **Settings → Devices & Services → Add Integration → BoxNow**, and pick your country (Bulgaria, Greece, Croatia or Cyprus) — BoxNow tracking needs no account, so that's the only setup step. All four countries run the identical backend and normalise the same way; the country only picks which host is polled and which tracking link is shown.
 
 Then add parcels via the integration's **Configure** dialog, the [`boxnow.track_parcel`](#services) service, or a [dashboard button](examples/dashboards/add_parcel_card.yaml). The tracking code is on your shipping confirmation email or the missed-delivery card.
 

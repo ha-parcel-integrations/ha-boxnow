@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import BoxNowApiClient
-from .const import PLATFORMS
+from .const import BOXNOW_API_URLS, CONF_COUNTRY, DEFAULT_COUNTRY, PLATFORMS
 from .coordinator import BoxNowCoordinator
 from .services import async_setup_services, async_unload_services
 
@@ -30,7 +30,9 @@ type BoxNowConfigEntry = ConfigEntry[BoxNowData]
 async def async_setup_entry(hass: HomeAssistant, entry: BoxNowConfigEntry) -> bool:
     """Set up BoxNow from a config entry."""
     # No auth: BoxNow tracking is public, so the HA-managed session is fine.
-    client = BoxNowApiClient(async_get_clientsession(hass))
+    country = entry.data.get(CONF_COUNTRY, DEFAULT_COUNTRY)
+    api_url = BOXNOW_API_URLS.get(country, BOXNOW_API_URLS[DEFAULT_COUNTRY])
+    client = BoxNowApiClient(async_get_clientsession(hass), api_url)
     coordinator = BoxNowCoordinator(hass, client, entry)
 
     # Fetch initial data here, before forwarding to platforms. Raising

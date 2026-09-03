@@ -21,12 +21,13 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 
 from .const import (
+    BOXNOW_TRACKING_URLS,
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
+    DEFAULT_COUNTRY,
     DEFAULT_DELIVERED_FILTER_AMOUNT,
     DEFAULT_DELIVERED_FILTER_TYPE,
     HISTORY_MAX_EVENTS,
-    TRACKING_URL,
     ParcelStatus,
 )
 
@@ -254,11 +255,17 @@ def _newest_event(events: list | None) -> dict | None:
     return max(dated, key=lambda item: item[0])[1]
 
 
-def tracking_url(tracking_code: str | None) -> str | None:
-    """Construct the consumer tracking deep-link for a parcel."""
+def tracking_url(tracking_code: str | None, country: str = DEFAULT_COUNTRY) -> str | None:
+    """Construct the consumer tracking deep-link for a parcel.
+
+    Every country in ``BOXNOW_TRACKING_URLS`` was confirmed to serve the
+    identical API payload shape (see const.py), so the deep-link template is
+    the only thing that varies by country.
+    """
     if not tracking_code:
         return None
-    return TRACKING_URL.format(tracking_code=tracking_code)
+    template = BOXNOW_TRACKING_URLS.get(country, BOXNOW_TRACKING_URLS[DEFAULT_COUNTRY])
+    return template.format(tracking_code=tracking_code)
 
 
 # Barcode mismatches we've already warned about, so a persistently
@@ -280,7 +287,9 @@ def _warn_barcode_mismatch(queried: str, reported: str) -> None:
     )
 
 
-def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
+def normalize_parcel(
+    raw: dict, *, country: str = DEFAULT_COUNTRY, include_history: bool = False
+) -> dict:
     """Return a carrier-agnostic parcel dict with a redacted payload under ``raw``.
 
     The **keys of the returned dict are the contract**: every carrier in the
@@ -309,6 +318,10 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
       ``awaiting_pickup`` sensor is already wired ahead of that.
     * ``sender``/``receiver``/``weight``/``dimensions``/``planned_from``/
       ``planned_to`` have no confirmed source field and stay ``None``.
+    * ``url`` uses the deep-link template for ``country`` (the config entry's
+      selected backend); every supported country was confirmed to return the
+      identical payload shape, so nothing else in this function varies by
+      country.
     * ``raw`` is an **allowlist**, not the full payload — the confirmed
       payload carries payment and service-related fields this integration
       must never surface. Only ``id``, ``state`` and a redacted event list
@@ -349,7 +362,7 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
         "planned_to": None,
         "pickup": is_pickup,
         "pickup_point": pickup_point,
-        "url": tracking_url(barcode),
+        "url": tracking_url(barcode, country),
         "weight": None,
         "dimensions": None,
         "history": build_history(events) if include_history else None,

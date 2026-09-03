@@ -1,0 +1,159 @@
+{
+  "title": "BoxNow",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Postavljanje BoxNow-a",
+        "description": "Praćenje BoxNow-a ne zahtijeva račun ni poštanski broj — odaberite koji backend BoxNow-a po državi želite koristiti. Pošiljke se naknadno dodaju putem opcija integracije ili usluge `boxnow.track_parcel`.",
+        "data": {
+          "country": "Država"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "BoxNow je već postavljen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcije BoxNow-a",
+        "menu_options": {
+          "parcels": "Upravljanje pošiljkama",
+          "settings": "Postavke"
+        },
+        "sections": {
+          "parcels": {
+            "name": "Pošiljke",
+            "data": {
+              "add": "Dodaj pošiljku",
+              "remove": "Ukloni pošiljke"
+            },
+            "data_description": {
+              "add": "Unesite kod za praćenje BoxNow-a kako biste ga počeli pratiti. Naći ćete ga na potvrdi otpreme ili na kartici o propuštenoj dostavi."
+            }
+          },
+          "delivered": {
+            "name": "Dostavljene pošiljke",
+            "data": {
+              "delivered_filter_type": "Filtriraj po",
+              "delivered_filter_amount": "Količina"
+            },
+            "data_description": {
+              "delivered_filter_type": "Prikazuje dostavljene pošiljke iz zadnjih X dana ili ograničava na X najnovijih.",
+              "delivered_filter_amount": "Broj dana ili pošiljaka za prikaz."
+            }
+          },
+          "history": {
+            "name": "Povijest pošiljke",
+            "data": {
+              "include_history": "Uključi povijest statusa"
+            },
+            "data_description": {
+              "include_history": "Dodaje atribut povijesti po pošiljci koji navodi svako ažuriranje statusa (vrijeme, status, izvorni tekst). Zadano isključeno."
+            }
+          }
+        }
+      },
+      "parcels": {
+        "title": "Upravljanje pošiljkama",
+        "data": {
+          "tracking_codes": "Kodovi za praćenje"
+        }
+      },
+      "settings": {
+        "title": "Postavke",
+        "data": {
+          "delivered_filter_type": "Dostavljene pošiljke: filtriraj po",
+          "delivered_filter_amount": "Dostavljene pošiljke: količina",
+          "include_history": "Uključi povijest statusa"
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Ovo ne izgleda kao kod za praćenje BoxNow-a.",
+      "already_tracked": "Ova pošiljka se već prati."
+    }
+  },
+  "selector": {
+    "delivered_filter_type": {
+      "options": {
+        "days": "Dani",
+        "parcels": "Broj pošiljaka"
+      }
+    },
+    "country": {
+      "options": {
+        "BG": "Bugarska",
+        "GR": "Grčka",
+        "HR": "Hrvatska",
+        "CY": "Cipar"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Praćenje pošiljke",
+      "description": "Počinje pratiti pošiljku prema njezinom kodu za praćenje BoxNow-a.",
+      "fields": {
+        "tracking_code": {
+          "name": "Kod za praćenje",
+          "description": "Kod za praćenje BoxNow-a."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Prestani pratiti pošiljku",
+      "description": "Prestaje pratiti pošiljku prema njezinom kodu za praćenje BoxNow-a.",
+      "fields": {
+        "tracking_code": {
+          "name": "Kod za praćenje",
+          "description": "Kod za praćenje BoxNow-a koji treba prestati pratiti."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Pošiljka je registrirana",
+      "parcel_status_changed": "Status pošiljke se promijenio",
+      "parcel_delivered": "Pošiljka je dostavljena",
+      "parcel_delivery_time_changed": "Očekivano vrijeme dostave pošiljke se promijenilo"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Osvježi"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Dostave"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Pristigle pošiljke",
+        "unit_of_measurement": "pošiljke"
+      },
+      "next_delivery": {
+        "name": "Sljedeća dostava"
+      },
+      "awaiting_pickup": {
+        "name": "Spremno za preuzimanje",
+        "unit_of_measurement": "pošiljke"
+      },
+      "delivered_parcels": {
+        "name": "Dostavljene pošiljke",
+        "unit_of_measurement": "pošiljke"
+      },
+      "last_update": {
+        "name": "Zadnje uspješno ažuriranje"
+      },
+      "parcel": {
+        "name": "Pošiljka {barcode}"
+      }
+    }
+  }
+}

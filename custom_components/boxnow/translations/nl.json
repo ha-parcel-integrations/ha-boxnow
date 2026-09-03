@@ -4,7 +4,10 @@
     "step": {
       "user": {
         "title": "BoxNow instellen",
-        "description": "BoxNow-tracking heeft geen account of postcode nodig — de hub wordt direct aangemaakt. Pakketten voeg je daarna toe via de integratie-opties of de service `boxnow.track_parcel`."
+        "description": "BoxNow-tracking heeft geen account of postcode nodig — kies welk landbackend van BoxNow gebruikt moet worden. Pakketten voeg je daarna toe via de integratie-opties of de service `boxnow.track_parcel`.",
+        "data": {
+          "country": "Land"
+        }
       }
     },
     "abort": {
@@ -77,6 +80,14 @@
       "options": {
         "days": "Dagen",
         "parcels": "Aantal pakketten"
+      }
+    },
+    "country": {
+      "options": {
+        "BG": "Bulgarije",
+        "GR": "Griekenland",
+        "HR": "Kroatië",
+        "CY": "Cyprus"
       }
     }
   },

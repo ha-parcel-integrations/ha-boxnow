@@ -4,7 +4,10 @@
     "step": {
       "user": {
         "title": "Set up BoxNow",
-        "description": "BoxNow tracking needs no account or postal code — the hub is created right away. Add parcels afterwards via the integration options or the `boxnow.track_parcel` service."
+        "description": "BoxNow tracking needs no account or postal code — pick which country's BoxNow backend to use. Add parcels afterwards via the integration options or the `boxnow.track_parcel` service.",
+        "data": {
+          "country": "Country"
+        }
       }
     },
     "abort": {
@@ -77,6 +80,14 @@
       "options": {
         "days": "Days",
         "parcels": "Number of parcels"
+      }
+    },
+    "country": {
+      "options": {
+        "BG": "Bulgaria",
+        "GR": "Greece",
+        "HR": "Croatia",
+        "CY": "Cyprus"
       }
     }
   },
