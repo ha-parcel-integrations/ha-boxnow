@@ -47,7 +47,7 @@ you act in one of these areas:
 BoxNow is a keyless, code-based locker network: a single `POST` to a
 public JSON tracking endpoint, no account/API key/cookie. Full API mechanics
 (endpoint, headers, envelope, status vocabulary) live in the private research
-repo at `carrier-research/api/boxnow/` — this section is the
+repo at `carrier-research/boxnow/api/` — this section is the
 HA-integration decisions that survived the build.
 
 **Country selector — one backend per country, identical payload shape.**
@@ -147,7 +147,7 @@ confirmed ETA field turns up.
 `BOXNOW_TRACKING_URLS` replaced the earlier single `TRACKING_URL` constant
 (`boxnow.gr/en?track=`), which was itself already maintainer-sourced rather
 than captured. Treat all four templates the same way until a real browser
-round-trip is recorded in `carrier-research/api/boxnow/`.
+round-trip is recorded in `carrier-research/boxnow/api/`.
 
 **Tracking-code format is unconfirmed.** `config_flow.py` accepts any
 non-empty free text and only trims surrounding whitespace — no case-folding,
