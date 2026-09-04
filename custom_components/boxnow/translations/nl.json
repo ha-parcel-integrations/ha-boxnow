@@ -84,10 +84,10 @@
     },
     "country": {
       "options": {
-        "BG": "Bulgarije",
-        "GR": "Griekenland",
-        "HR": "Kroatië",
-        "CY": "Cyprus"
+        "bg": "Bulgarije",
+        "gr": "Griekenland",
+        "hr": "Kroatië",
+        "cy": "Cyprus"
       }
     }
   },

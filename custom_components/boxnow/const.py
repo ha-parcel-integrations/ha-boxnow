@@ -73,10 +73,10 @@ CAPABILITIES = frozenset({"url", "history"})
 CONF_COUNTRY = "country"
 
 BOXNOW_API_URLS: dict[str, str] = {
-    "BG": "https://api-production.boxnow.bg/api/v1/parcels:track",
-    "GR": "https://api-production.boxnow.gr/api/v1/parcels:track",
-    "HR": "https://api-production.boxnow.hr/api/v1/parcels:track",
-    "CY": "https://api-production.boxnow.cy/api/v1/parcels:track",
+    "bg": "https://api-production.boxnow.bg/api/v1/parcels:track",
+    "gr": "https://api-production.boxnow.gr/api/v1/parcels:track",
+    "hr": "https://api-production.boxnow.hr/api/v1/parcels:track",
+    "cy": "https://api-production.boxnow.cy/api/v1/parcels:track",
 }
 
 # Human-facing deep link surfaced on each parcel's ``url`` field, one per
@@ -84,13 +84,24 @@ BOXNOW_API_URLS: dict[str, str] = {
 # bot-protection 403s every path on these hosts regardless of parameter, real
 # code or not), each the country site's own homepage tracking path.
 BOXNOW_TRACKING_URLS: dict[str, str] = {
-    "BG": "https://boxnow.bg/homepage?track={tracking_code}",
-    "GR": "https://boxnow.gr/homepage-gr?track={tracking_code}",
-    "HR": "https://boxnow.hr/?track={tracking_code}",
-    "CY": "https://boxnow.cy/?track={tracking_code}",
+    "bg": "https://boxnow.bg/homepage?track={tracking_code}",
+    "gr": "https://boxnow.gr/homepage-gr?track={tracking_code}",
+    "hr": "https://boxnow.hr/?track={tracking_code}",
+    "cy": "https://boxnow.cy/?track={tracking_code}",
 }
 
-DEFAULT_COUNTRY = "GR"
+DEFAULT_COUNTRY = "gr"
+
+
+def normalize_country(value: str | None) -> str:
+    """Return a supported country key for a stored config-entry value.
+
+    Home Assistant requires selector option keys to be lowercase, so entries
+    written by 0.10.0 (which stored uppercase ISO codes) are folded here
+    instead of being silently pointed at the default backend.
+    """
+    key = (value or DEFAULT_COUNTRY).lower()
+    return key if key in BOXNOW_API_URLS else DEFAULT_COUNTRY
 
 # Tracked parcels live in the config entry options as a list of
 # ``{tracking_code}`` dicts — this carrier has no account or parcel feed, so the

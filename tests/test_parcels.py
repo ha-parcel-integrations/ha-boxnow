@@ -392,7 +392,7 @@ def test_tracking_url_uses_the_selected_countrys_template():
 
 
 def test_normalize_parcel_url_follows_the_country_argument():
-    parcel = normalize_parcel(delivered_sample(), country="HR")
+    parcel = normalize_parcel(delivered_sample(), country="hr")
     assert parcel["url"] == "https://boxnow.hr/?track=EXAMPLE123456"
 
 
@@ -472,3 +472,8 @@ def test_delivered_filter_keeps_unparseable_timestamp():
     """Better to show a parcel with a broken date than to silently drop it."""
     parcels = [{"barcode": "WEIRD", "delivered_at": "nonsense"}]
     assert apply_delivered_filter(parcels, _entry("days", 7)) == parcels
+
+
+def test_tracking_url_accepts_a_legacy_uppercase_country():
+    """Entries written by 0.10.0 stored uppercase ISO codes."""
+    assert tracking_url("EXAMPLE123456", "HR") == "https://boxnow.hr/?track=EXAMPLE123456"

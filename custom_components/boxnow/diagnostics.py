@@ -7,7 +7,7 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from . import BoxNowConfigEntry
-from .const import CONF_COUNTRY, DEFAULT_COUNTRY
+from .const import CONF_COUNTRY, normalize_country
 
 # Diagnostics are pasted into public issues, so redact anything that
 # identifies a person, an address or a specific parcel. Over-redacting is
@@ -66,7 +66,7 @@ async def async_get_config_entry_diagnostics(
     coordinator = entry.runtime_data.coordinator
 
     return {
-        "country": entry.data.get(CONF_COUNTRY, DEFAULT_COUNTRY),
+        "country": normalize_country(entry.data.get(CONF_COUNTRY)),
         "entry_options": async_redact_data(dict(entry.options), TO_REDACT),
         "counts": {
             "incoming_active": len(coordinator.data or []),

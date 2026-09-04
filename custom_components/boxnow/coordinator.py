@@ -24,7 +24,6 @@ from .const import (
     CONF_INCLUDE_HISTORY,
     CONF_PARCELS,
     CONF_TRACKING_CODE,
-    DEFAULT_COUNTRY,
     DEFAULT_INCLUDE_HISTORY,
     DOMAIN,
     HOT_INTERVAL_MINUTES,
@@ -34,6 +33,7 @@ from .const import (
     QUIET_WINDOW_START_HOUR,
     STAGGER_MINUTES,
     ParcelStatus,
+    normalize_country,
 )
 from .parcels import apply_delivered_filter, normalize_parcel, sort_parcels_by_ts
 
@@ -154,7 +154,7 @@ class BoxNowCoordinator(DataUpdateCoordinator[list[dict]]):
         # the backend, not a display preference). Falls back to the
         # pre-country-selector default for an entry created before this was
         # added.
-        self._country = entry.data.get(CONF_COUNTRY, DEFAULT_COUNTRY)
+        self._country = normalize_country(entry.data.get(CONF_COUNTRY))
         self.delivered: list[dict] = []
         # tracking_code -> last successful raw payload, so a transient fetch
         # failure or a not-found blip keeps the parcel visible instead of

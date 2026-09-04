@@ -84,10 +84,10 @@
     },
     "country": {
       "options": {
-        "BG": "Bugarska",
-        "GR": "Grčka",
-        "HR": "Hrvatska",
-        "CY": "Cipar"
+        "bg": "Bugarska",
+        "gr": "Grčka",
+        "hr": "Hrvatska",
+        "cy": "Cipar"
       }
     }
   },

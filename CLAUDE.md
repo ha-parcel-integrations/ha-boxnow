@@ -66,8 +66,12 @@ everywhere, `CAPABILITIES` stays a flat frozenset — **do not** switch to
 `CAPABILITIES_BY_VARIANT` for this carrier; that pattern is for carriers
 whose backends genuinely differ in what they return, which BoxNow's four
 don't. An entry created before this selector existed has no `CONF_COUNTRY` in
-its data; every read site falls back to `DEFAULT_COUNTRY` ("GR", the
-originally-hardcoded backend) rather than crashing.
+its data; every read site runs the value through `normalize_country()`, which
+falls back to `DEFAULT_COUNTRY` ("gr", the originally-hardcoded backend)
+rather than crashing. Keys are **lowercase** — hassfest rejects a selector
+option key that isn't `[a-z0-9-_]+`, which is what 0.10.0's uppercase ISO
+codes tripped over; `normalize_country()` also folds those stored uppercase
+values so an entry written by 0.10.0 keeps its backend.
 
 **Tracking-link paths differ per country and are maintainer-sourced, not
 independently captured** (same Cloudflare 403-on-everything caveat as

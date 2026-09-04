@@ -45,11 +45,11 @@ async def test_user_flow_creates_hub_for_selected_country(hass):
         DOMAIN, context={"source": "user"}
     )
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {CONF_COUNTRY: "HR"}
+        result["flow_id"], {CONF_COUNTRY: "hr"}
     )
     assert result["type"] == "create_entry"
     assert result["title"] == "BoxNow"
-    assert result["data"][CONF_COUNTRY] == "HR"
+    assert result["data"][CONF_COUNTRY] == "hr"
     assert result["options"][CONF_PARCELS] == []
 
 

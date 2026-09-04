@@ -29,6 +29,7 @@ from .const import (
     DEFAULT_DELIVERED_FILTER_TYPE,
     HISTORY_MAX_EVENTS,
     ParcelStatus,
+    normalize_country,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -264,7 +265,7 @@ def tracking_url(tracking_code: str | None, country: str = DEFAULT_COUNTRY) -> s
     """
     if not tracking_code:
         return None
-    template = BOXNOW_TRACKING_URLS.get(country, BOXNOW_TRACKING_URLS[DEFAULT_COUNTRY])
+    template = BOXNOW_TRACKING_URLS[normalize_country(country)]
     return template.format(tracking_code=tracking_code)
 
 
