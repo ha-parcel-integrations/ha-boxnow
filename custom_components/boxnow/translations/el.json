@@ -19,7 +19,7 @@
       "init": {
         "title": "Επιλογές BoxNow",
         "menu_options": {
-          "parcels": "Διαχείριση δεμάτων",
+          "parcels": "Δέματα",
           "settings": "Ρυθμίσεις"
         },
         "sections": {

@@ -19,7 +19,7 @@
       "init": {
         "title": "Opcije BoxNow-a",
         "menu_options": {
-          "parcels": "Upravljanje pošiljkama",
+          "parcels": "Pošiljke",
           "settings": "Postavke"
         },
         "sections": {

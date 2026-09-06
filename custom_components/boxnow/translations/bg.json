@@ -19,7 +19,7 @@
       "init": {
         "title": "Опции на BoxNow",
         "menu_options": {
-          "parcels": "Управление на колети",
+          "parcels": "Колети",
           "settings": "Настройки"
         },
         "sections": {
