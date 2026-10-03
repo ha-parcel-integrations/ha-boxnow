@@ -79,7 +79,7 @@
     "delivered_filter_type": {
       "options": {
         "days": "Dani",
-        "parcels": "Broj pošiljaka"
+        "parcels": "Broj paketa"
       }
     },
     "country": {
@@ -134,25 +134,25 @@
     },
     "sensor": {
       "incoming_parcels": {
-        "name": "Pristigle pošiljke",
-        "unit_of_measurement": "pošiljke"
+        "name": "Dolazni paketi",
+        "unit_of_measurement": "paketi"
       },
       "next_delivery": {
         "name": "Sljedeća dostava"
       },
       "awaiting_pickup": {
         "name": "Spremno za preuzimanje",
-        "unit_of_measurement": "pošiljke"
+        "unit_of_measurement": "paketi"
       },
       "delivered_parcels": {
-        "name": "Dostavljene pošiljke",
-        "unit_of_measurement": "pošiljke"
+        "name": "Dostavljeni paketi",
+        "unit_of_measurement": "paketi"
       },
       "last_update": {
         "name": "Zadnje uspješno ažuriranje"
       },
       "parcel": {
-        "name": "Pošiljka {barcode}"
+        "name": "Paket {barcode}"
       }
     }
   }
