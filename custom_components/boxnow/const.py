@@ -43,6 +43,10 @@ KNOWN_CAPABILITIES = frozenset(
 # sample confirms the pickup-point field names.
 CAPABILITIES = frozenset({"url", "history"})
 
+# Fields not confirmed yet — the docs site shows them as "awaiting data".
+# Move a field into the declaration above once a real parcel shows it.
+PENDING_CAPABILITIES = frozenset({"pickup_point"})
+
 # If this carrier ever grows a second backend with a genuinely different
 # payload shape (a country-specific API, not just a config option), replace
 # the single CAPABILITIES above with a CAPABILITIES_BY_VARIANT dict instead:
