@@ -164,8 +164,7 @@ no separator-stripping, no length/charset check. Do not add one without a
 confirmed sample; a false negative here is worse than forwarding a bad code
 and letting the next poll report it as not found.
 
-**Do not build** (binding, not just historical): no scraping `boxnow.gr`'s own
-web bundle, no batch-querying or enumerating `parcelId` values (only
+**Do not build** (binding, not just historical): no scraping `boxnow.gr`'s website, no batch-querying or enumerating `parcelId` values (only
 user-registered codes are ever polled), no surfacing payment/recipient
 fields, no calling any endpoint beyond `parcels:track`.
 
