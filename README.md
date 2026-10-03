@@ -7,7 +7,7 @@
 
 > 💬 Questions or feedback? Join the discussion on the [Home Assistant community](https://community.home-assistant.io/t/packages-postnl-dhl-nl-dpd-and-gls-parcel-integration/112433/).
 
-> ⚠️ **Pre-release.** BoxNow's status vocabulary is only partially
+> ⚠️ **Pre-1.0 release.** BoxNow's status vocabulary is only partially
 > confirmed — see [Parcel status reference](#parcel-status-reference) and
 > [Troubleshooting](#troubleshooting). Everything else (the endpoint, the
 > request/response shape, the `delivered`/`missing` statuses) is
