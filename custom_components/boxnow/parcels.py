@@ -56,14 +56,11 @@ NEW_ISSUE_URL = (
 # * ``_EVENT_TYPE_MAP`` — each history entry's ``type`` field. These feed only
 #   the per-event ``history`` status, not the top-level parcel ``status``.
 #   ``new``, ``in-depot``, ``final-destination``, ``delivered`` and ``missing``
-#   are live-confirmed (real households' event logs, 2026-09); ``missing`` as
-#   an event.type mirrors the top-level "missing" state 1:1 — the same
-#   parcel's final event carried it. ``accepted-to-locker`` is also
-#   live-confirmed but its meaning is inferred, not documented anywhere: on a
-#   parcel that ended up "missing", it stood in the position ``final-destination``
-#   normally occupies (right before the terminal event, no ``in-depot`` step),
-#   so it is treated as an alternate "reached a locker" event and mapped the
-#   same as ``final-destination``.
+#   are live-confirmed (real households' event logs, 2026-09).
+#   ``accepted-to-locker`` is the *sender* dropping the parcel into a locker or
+#   store to start its journey, so it is ``in_transit`` — not a parcel waiting
+#   for the recipient. Only ``final-destination`` means ready for collection
+#   at the recipient's locker.
 _STATE_MAP: dict[str, ParcelStatus] = {
     "delivered": ParcelStatus.DELIVERED,
     "missing": ParcelStatus.PROBLEM,  # terminal non-delivery outcome, not "unknown"
@@ -73,7 +70,7 @@ _EVENT_TYPE_MAP: dict[str, ParcelStatus] = {
     "new": ParcelStatus.REGISTERED,
     "in-depot": ParcelStatus.IN_TRANSIT,
     "final-destination": ParcelStatus.AT_PICKUP_POINT,
-    "accepted-to-locker": ParcelStatus.AT_PICKUP_POINT,
+    "accepted-to-locker": ParcelStatus.IN_TRANSIT,
     "delivered": ParcelStatus.DELIVERED,
     "missing": ParcelStatus.PROBLEM,
 }

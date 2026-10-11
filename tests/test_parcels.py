@@ -83,7 +83,7 @@ def test_map_event_status_confirmed_values():
     assert map_event_status("new") == ParcelStatus.REGISTERED
     assert map_event_status("in-depot") == ParcelStatus.IN_TRANSIT
     assert map_event_status("final-destination") == ParcelStatus.AT_PICKUP_POINT
-    assert map_event_status("accepted-to-locker") == ParcelStatus.AT_PICKUP_POINT
+    assert map_event_status("accepted-to-locker") == ParcelStatus.IN_TRANSIT
     assert map_event_status("delivered") == ParcelStatus.DELIVERED
     assert map_event_status("missing") == ParcelStatus.PROBLEM
 
@@ -296,11 +296,12 @@ def test_normalize_missing_parcel_maps_to_problem():
 
 def test_normalize_missing_parcel_history_maps_accepted_to_locker_and_missing():
     """Mirrors a live-captured sample: no `in-depot`, `accepted-to-locker`
-    stands in its place, then the terminal `missing` event — both event
-    types are live-confirmed and mapped in `history`."""
+    stands in its place, then the terminal `missing` event. The sender's
+    drop-off is never reported as a parcel waiting for the recipient."""
     parcel = normalize_parcel(missing_sample(), include_history=True)
     statuses = {entry["raw_status"]: entry["status"] for entry in parcel["history"]}
-    assert statuses["accepted-to-locker"] == ParcelStatus.AT_PICKUP_POINT
+    assert statuses["accepted-to-locker"] == ParcelStatus.IN_TRANSIT
+    assert statuses["accepted-to-locker"] != ParcelStatus.AT_PICKUP_POINT
     assert statuses["missing"] == ParcelStatus.PROBLEM
 
 

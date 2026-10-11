@@ -97,16 +97,23 @@ until a locker-ready (or in-transit) sample confirms more of the vocabulary.
 `_STATE_MAP` (the top-level `state` field, drives `status`) and
 `_EVENT_TYPE_MAP` (each history entry's `type` field) apart on purpose:
 - `_STATE_MAP` only has the two live-confirmed entries above.
-- `_EVENT_TYPE_MAP` is now fully live-confirmed too (2026-09, real households'
-  own event logs, pulled by the maintainer directly): `new`→`registered`,
-  `in-depot`→`in_transit`, `final-destination`→`at_pickup_point`,
-  `accepted-to-locker`→`at_pickup_point`, `delivered`→`delivered`,
-  `missing`→`problem`. `accepted-to-locker` is a live-confirmed code but its
-  *meaning* is inferred, not documented anywhere: on a parcel that ended up
-  `missing`, it stood exactly where `final-destination` normally sits (no
-  `in-depot` step, straight to the terminal event), so it is treated as an
-  alternate "reached a locker" event and mapped identically. These all still
-  feed **only** `history` entries, never the top-level `status`.
+- `_EVENT_TYPE_MAP` is live-confirmed (2026-09, real households' own event
+  logs, pulled by the maintainer directly): `new`→`registered`,
+  `in-depot`→`in_transit`, `accepted-to-locker`→`in_transit`,
+  `final-destination`→`at_pickup_point`, `delivered`→`delivered`,
+  `missing`→`problem`. The two locker events mean different things and must
+  never share a mapping: `accepted-to-locker` is the **sender** handing the
+  parcel in at a locker or store (it sits between `new` and `in-depot`, and on
+  a parcel that went `missing` it stood exactly where a drop-off would), while
+  only `final-destination` is the parcel waiting in the **recipient's** locker.
+  An earlier build read `accepted-to-locker` as a second "reached a locker"
+  event and mapped it to `at_pickup_point` — a wrong claim in `history`, not
+  just a stale comment. These all still feed **only** `history` entries, never
+  the top-level `status`.
+- Other event/state codes exist in BOX NOW's own vocabulary (for instance
+  `in-final-destination`, `in-transit`, `wait-for-load`, `returned`,
+  `expired`) and are deliberately **not** mapped until a real parcel of ours
+  reports them: they fall to `unknown` plus the one-shot WARNING.
 
 This means a parcel's top-level `status` can currently only ever come back as
 `delivered`, `problem`, or `unknown` — never `at_pickup_point`, even though
