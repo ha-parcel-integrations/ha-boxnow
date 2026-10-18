@@ -45,7 +45,7 @@ async def test_get_parcel_sends_bare_post_with_no_auth():
     assert "Cookie" not in headers
     assert "Accept" in headers
     assert "Content-Type" in headers
-    assert "User-Agent" in headers
+    assert "User-Agent" not in headers
 
 
 async def test_get_parcel_returns_none_on_missing_data_key():

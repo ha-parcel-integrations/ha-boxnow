@@ -18,15 +18,11 @@ import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
-# Browser-like headers only — no cookie, API key or account credential is
-# part of the confirmed live-200 request.
+# No cookie, API key or account credential is part of the confirmed live-200
+# request, and the endpoint answers HA's own User-Agent.
 _HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
 }
 
 
