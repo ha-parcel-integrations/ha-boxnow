@@ -114,6 +114,23 @@ def map_parcel_status(state: str | None) -> ParcelStatus:
     return ParcelStatus.UNKNOWN
 
 
+def resolve_status(state: str | None, events: list | None) -> ParcelStatus:
+    """Return the parcel status: ``state``, else the newest event, else ``unknown``.
+
+    ``state`` only ever carries the terminal outcomes, so a parcel still on its
+    way would otherwise read ``unknown``. The newest event's type is the
+    fallback; only when neither maps does an unrecognised ``state`` warn.
+    """
+    mapped = _STATE_MAP.get(state) if state else None
+    if mapped is not None:
+        return mapped
+    newest = _newest_event(events)
+    from_event = _EVENT_TYPE_MAP.get((newest or {}).get("type") or "")
+    if from_event is not None:
+        return from_event
+    return map_parcel_status(state)
+
+
 def map_event_status(event_type: str | None) -> ParcelStatus | None:
     """Map one history event's ``type`` to a canonical status, or ``None``.
 
@@ -297,9 +314,8 @@ def normalize_parcel(
 
     BoxNow specifics:
 
-    * ``status`` comes from the top-level ``state`` only (:func:`map_parcel_status`),
-      never from the newest event — the event vocabulary is unconfirmed and
-      feeds ``history`` alone.
+    * ``status`` comes from the top-level ``state``, and from the newest
+      event's ``type`` when ``state`` is unmapped (:func:`resolve_status`).
     * ``barcode`` is the user-supplied ``parcelId`` (tagged onto ``raw`` by the
       coordinator before this call), corroborated — never overridden — by the
       response's own ``id`` when present; a disagreement is logged once, not
@@ -336,10 +352,9 @@ def normalize_parcel(
     barcode = queried_code or reported_id
 
     state = raw.get("state")
-    status = map_parcel_status(state)
-    delivered = status is ParcelStatus.DELIVERED
-
     events = raw.get("events") or []
+    status = resolve_status(state, events)
+    delivered = status is ParcelStatus.DELIVERED
 
     is_pickup = status is ParcelStatus.AT_PICKUP_POINT
     pickup_point = None

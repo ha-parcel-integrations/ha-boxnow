@@ -311,28 +311,28 @@ def test_normalize_history_is_opt_in():
     assert parcel["history"][0]["status"] == ParcelStatus.REGISTERED
 
 
-def test_normalize_unconfirmed_state_falls_back_to_unknown_with_warning(caplog):
-    """`registered`/`in_transit`/`at_pickup_point` are not evidence-backed yet —
-
-    an in-transit-looking sample still normalizes to `unknown` because the
-    top-level `state` vocabulary that would reach those statuses is
-    unconfirmed."""
+def test_normalize_unmapped_state_falls_back_to_the_newest_event(caplog):
+    """`state` only carries terminal outcomes, so an in-flight parcel reads the
+    newest event's type instead of `unknown`."""
     parcel = normalize_parcel(active_sample())
-    assert parcel["status"] == ParcelStatus.UNKNOWN
+    assert parcel["status"] == ParcelStatus.IN_TRANSIT
     assert parcel["delivered"] is False
-    assert "in-depot" in caplog.text
+    assert "Unrecognised BoxNow state" not in caplog.text
 
 
-def test_normalize_pickup_flags_stay_false_while_state_stays_unmapped():
-    """`pickup`/`pickup_point` follow the top-level `status`, which stays
+def test_normalize_unmapped_state_without_a_mapped_event_warns(caplog):
+    parcel = normalize_parcel({"parcelId": "EXAMPLE123456", "state": "mystery", "events": []})
+    assert parcel["status"] == ParcelStatus.UNKNOWN
+    assert "mystery" in caplog.text
 
-    `unknown` here — no live sample has ever shown a `state` value that maps
-    to `AT_PICKUP_POINT` — even though the parcel's *events* already contain
-    the live-confirmed `final-destination` mapping."""
+
+def test_normalize_final_destination_event_lights_up_the_pickup_flags():
+    """A parcel whose newest event is the live-confirmed `final-destination`
+    is waiting for collection, with the locker as the pickup point."""
     parcel = normalize_parcel(pickup_sample(), include_history=True)
-    assert parcel["pickup"] is False
-    assert parcel["pickup_point"] is None
-    # ... while the event-type mapping still shows up in history.
+    assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
+    assert parcel["pickup"] is True
+    assert parcel["pickup_point"]
     assert parcel["history"][-1]["status"] == ParcelStatus.AT_PICKUP_POINT
     assert parcel["history"][-1]["raw_status"] == "final-destination"
 

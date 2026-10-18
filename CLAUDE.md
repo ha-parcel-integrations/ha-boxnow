@@ -86,16 +86,18 @@ before): `boxnow.bg/homepage?track=`, `boxnow.gr/homepage-gr?track=`,
 **Pre-1.0 status vocabulary — the central caveat of this repo.** Six
 consented live lookups only ever confirmed two top-level `state` values:
 `delivered` → `ParcelStatus.DELIVERED` and `missing` → `ParcelStatus.PROBLEM`
-(a terminal non-delivery outcome, deliberately not `unknown`). Everything
-else a real parcel could report — `registered`, `in_transit`,
-`at_pickup_point`, `out_for_delivery`, `returning` — has **no confirmed
-top-level `state` value** and normalizes to `unknown` with a one-shot
-WARNING. Ship at `0.x.y`/a `bN` pre-release only; do not bump to `1.0.0`
-until a locker-ready (or in-transit) sample confirms more of the vocabulary.
+(a terminal non-delivery outcome, deliberately not `unknown`). `state` carries
+only those terminal outcomes, so any other parcel takes its status from the
+newest event's `type` via `_EVENT_TYPE_MAP` (`resolve_status`): `new`,
+`in-depot`, `final-destination` and `accepted-to-locker` are live-confirmed.
+Only a parcel where neither the `state` nor the newest event maps normalizes to
+`unknown`, with a one-shot WARNING. Ship at `0.x.y`/a `bN` pre-release only; do
+not bump to `1.0.0` until a locker-ready (or in-transit) sample confirms more of
+the vocabulary.
 
 **Two separate vocabularies — do not merge them.** `parcels.py` keeps
-`_STATE_MAP` (the top-level `state` field, drives `status`) and
-`_EVENT_TYPE_MAP` (each history entry's `type` field) apart on purpose:
+`_STATE_MAP` (the top-level `state` field, drives `status` first) and
+`_EVENT_TYPE_MAP` (each event's `type`: the `status` fallback and every history entry) apart on purpose:
 - `_STATE_MAP` only has the two live-confirmed entries above.
 - `_EVENT_TYPE_MAP` is live-confirmed (2026-09, real households' own event
   logs, pulled by the maintainer directly): `new`→`registered`,
@@ -125,10 +127,9 @@ lights up the moment `_STATE_MAP` gains a confirmed entry for the
 locker-ready state — no other code change needed then.
 
 **`pickup`/`pickup_point` are gated on `status is AT_PICKUP_POINT`**,
-matching GLS/DHL-NL/Slovenská Pošta — not hardcoded off. In practice they
-still stay `False`/`None` today: no top-level `state` value has ever mapped
-to `AT_PICKUP_POINT` (only the separate `event.type` vocabulary reaches it,
-and that only feeds `history`). When `is_pickup` is true, `pickup_point`
+matching GLS/DHL-NL/Slovenská Pošta — not hardcoded off. A parcel
+whose newest event is `final-destination` reaches `AT_PICKUP_POINT` through the
+event fallback. When `is_pickup` is true, `pickup_point`
 reads the newest event's `locationDisplayName` (live-confirmed field, 2026-09
 sample batch — a locker/hub branch name). This mirrors the `awaiting_pickup`
 sensor's forward-wiring: no further code change needed once `_STATE_MAP`

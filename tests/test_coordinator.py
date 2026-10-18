@@ -324,7 +324,7 @@ async def test_fires_status_changed_event(hass):
     await hass.async_block_till_done()
 
     assert len(events) == 1
-    assert events[0].data["old_status"] == ParcelStatus.UNKNOWN
+    assert events[0].data["old_status"] == ParcelStatus.IN_TRANSIT
     assert events[0].data["new_status"] == ParcelStatus.PROBLEM
 
 
