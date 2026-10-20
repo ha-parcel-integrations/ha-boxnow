@@ -1,4 +1,5 @@
 """Tests for the BoxNow refresh button."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 from custom_components.boxnow.button import BoxNowRefreshButton

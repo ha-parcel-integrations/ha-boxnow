@@ -4,11 +4,11 @@ These need no Home Assistant instance — the whole point of keeping
 ``parcels.py`` free of I/O is that the carrier-specific mapping (the part you
 rewrite per carrier) can be tested as plain functions.
 """
-from datetime import datetime, timedelta, timezone
+
+from datetime import UTC, datetime, timedelta
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-import custom_components.boxnow.parcels as parcels_module
 from custom_components.boxnow.const import (
     BOXNOW_TRACKING_URLS,
     CAPABILITIES,
@@ -18,6 +18,7 @@ from custom_components.boxnow.const import (
     KNOWN_CAPABILITIES,
     ParcelStatus,
 )
+import custom_components.boxnow.parcels as parcels_module
 from custom_components.boxnow.parcels import (
     apply_delivered_filter,
     build_history,
@@ -117,7 +118,7 @@ def test_state_and_event_vocabularies_warn_independently(caplog):
 def test_parse_iso_handles_z_naive_and_garbage():
     assert parse_iso("2026-04-29T13:12:42Z").tzinfo is not None
     # A naive value is assumed UTC so mixed lists still sort.
-    assert parse_iso("2026-04-29T13:12:42").tzinfo == timezone.utc
+    assert parse_iso("2026-04-29T13:12:42").tzinfo == UTC
     assert parse_iso("not-a-date") is None
     assert parse_iso(None) is None
 
@@ -154,9 +155,7 @@ def test_build_history_orders_oldest_to_newest():
 
 
 def test_build_history_caps_to_max_events():
-    events = [
-        event("in-depot", f"2026-04-{day:02d}T10:00:00Z") for day in range(1, 26)
-    ]
+    events = [event("in-depot", f"2026-04-{day:02d}T10:00:00Z") for day in range(1, 26)]
     assert len(build_history(events, max_events=20)) == 20
 
 
@@ -185,7 +184,11 @@ def test_build_history_out_of_order_input_still_sorts():
             event("in-depot", "2026-04-28T15:52:17Z"),
         ]
     )
-    assert [entry["raw_status"] for entry in history] == ["new", "in-depot", "delivered"]
+    assert [entry["raw_status"] for entry in history] == [
+        "new",
+        "in-depot",
+        "delivered",
+    ]
 
 
 def test_build_history_absent_optional_keys_do_not_crash():
@@ -321,7 +324,9 @@ def test_normalize_unmapped_state_falls_back_to_the_newest_event(caplog):
 
 
 def test_normalize_unmapped_state_without_a_mapped_event_warns(caplog):
-    parcel = normalize_parcel({"parcelId": "EXAMPLE123456", "state": "mystery", "events": []})
+    parcel = normalize_parcel(
+        {"parcelId": "EXAMPLE123456", "state": "mystery", "events": []}
+    )
     assert parcel["status"] == ParcelStatus.UNKNOWN
     assert "mystery" in caplog.text
 
@@ -346,7 +351,9 @@ def test_normalize_pickup_point_populates_once_state_confirms_at_pickup_point(
     mirroring how the `awaiting_pickup` sensor is already wired ahead of
     that confirmation. `pickup_point` reads the newest event's
     `locationDisplayName`."""
-    monkeypatch.setitem(parcels_module._STATE_MAP, "at-locker", ParcelStatus.AT_PICKUP_POINT)
+    monkeypatch.setitem(
+        parcels_module._STATE_MAP, "at-locker", ParcelStatus.AT_PICKUP_POINT
+    )
     raw = pickup_sample()
     raw["state"] = "at-locker"
     parcel = normalize_parcel(raw)
@@ -452,7 +459,7 @@ def _entry(filter_type: str, amount: int) -> MockConfigEntry:
 
 
 def _delivered_pair() -> list[dict]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return [
         {"barcode": "RECENT", "delivered_at": (now - timedelta(days=1)).isoformat()},
         {"barcode": "OLD", "delivered_at": (now - timedelta(days=30)).isoformat()},
@@ -477,4 +484,6 @@ def test_delivered_filter_keeps_unparseable_timestamp():
 
 def test_tracking_url_accepts_a_legacy_uppercase_country():
     """Entries written by 0.10.0 stored uppercase ISO codes."""
-    assert tracking_url("EXAMPLE123456", "HR") == "https://boxnow.hr/?track=EXAMPLE123456"
+    assert (
+        tracking_url("EXAMPLE123456", "HR") == "https://boxnow.hr/?track=EXAMPLE123456"
+    )

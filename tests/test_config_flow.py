@@ -116,9 +116,7 @@ async def test_options_add_code_strips_surrounding_whitespace_only(hass):
         result["flow_id"], {"tracking_codes": ["  example-123 456  "]}
     )
     assert result["type"] == "create_entry"
-    assert result["data"][CONF_PARCELS] == [
-        {CONF_TRACKING_CODE: "example-123 456"}
-    ]
+    assert result["data"][CONF_PARCELS] == [{CONF_TRACKING_CODE: "example-123 456"}]
 
 
 async def test_options_blank_entry_is_dropped_not_rejected(hass):

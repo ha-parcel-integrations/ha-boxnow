@@ -8,6 +8,7 @@ top-level states are live-confirmed; the ``event.type`` values
 (``new``/``in-depot``/``final-destination``/``accepted-to-locker``/``delivered``/``missing``)
 are all live-confirmed too (2026-09 sample batch).
 """
+
 from __future__ import annotations
 
 ACTIVE_CODE = "EXAMPLE999999"

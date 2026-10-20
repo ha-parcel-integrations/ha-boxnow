@@ -6,8 +6,12 @@ anything else normalizes to ``unknown``, so these tests exercise transitions
 between those three (delivered / missing / unknown) rather than the full
 ``ParcelStatus`` range other carriers can reach.
 """
+
+import asyncio
 from unittest.mock import AsyncMock
 
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -21,6 +25,7 @@ from custom_components.boxnow.const import (
     ParcelStatus,
 )
 from custom_components.boxnow.coordinator import BoxNowCoordinator
+from custom_components.boxnow.parcels import normalize_parcel
 
 from .payloads import (
     ACTIVE_CODE,
@@ -99,7 +104,6 @@ async def test_update_keeps_cached_payload_on_error(hass):
 
 
 async def test_update_raises_when_every_parcel_fails(hass):
-    from homeassistant.helpers.update_coordinator import UpdateFailed
 
     entry = _entry_with([{CONF_TRACKING_CODE: DELIVERED_CODE}])
     entry.add_to_hass(hass)
@@ -166,7 +170,6 @@ async def test_update_prunes_cache_for_untracked_parcels(hass):
 
 async def test_update_fetches_parcels_concurrently(hass):
     """All tracked parcels go out in one gather, not one-by-one."""
-    import asyncio
 
     entry = _entry_with(
         [{CONF_TRACKING_CODE: ACTIVE_CODE}, {CONF_TRACKING_CODE: DELIVERED_CODE}]
@@ -280,7 +283,6 @@ async def test_first_refresh_fires_nothing(hass):
 
 
 async def test_event_carries_device_id(hass):
-    from homeassistant.helpers import device_registry as dr
 
     entry = _entry_with([{CONF_TRACKING_CODE: ACTIVE_CODE}])
     entry.add_to_hass(hass)
@@ -292,9 +294,7 @@ async def test_event_carries_device_id(hass):
     coordinator = BoxNowCoordinator(hass, client, entry)
 
     events = []
-    hass.bus.async_listen(
-        f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e)
-    )
+    hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e))
 
     client.async_get_parcel.return_value = active_sample()  # unknown
     await coordinator._async_update_data()
@@ -312,9 +312,7 @@ async def test_fires_status_changed_event(hass):
     coordinator = BoxNowCoordinator(hass, client, entry)
 
     events = []
-    hass.bus.async_listen(
-        f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e)
-    )
+    hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e))
 
     client.async_get_parcel.return_value = active_sample()  # unknown
     await coordinator._async_update_data()  # first refresh: suppressed
@@ -421,7 +419,6 @@ async def test_delivery_time_changed_never_fires():
 
     so this event can never fire yet. Documented as a deliberate limitation
     rather than an oversight."""
-    from custom_components.boxnow.parcels import normalize_parcel
 
     parcel = normalize_parcel(active_sample())
     assert parcel["planned_from"] is None

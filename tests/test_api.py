@@ -1,14 +1,12 @@
 """Tests for the BoxNow API client."""
+
 import json
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 import pytest
 
-from custom_components.boxnow.api import (
-    BoxNowApiClient,
-    BoxNowApiError,
-)
+from custom_components.boxnow.api import BoxNowApiClient, BoxNowApiError
 
 CODE = "EXAMPLE123456"
 API_URL = "https://api-production.boxnow.gr/api/v1/parcels:track"
@@ -70,7 +68,8 @@ async def test_get_parcel_returns_none_on_non_dict_item():
 
 async def test_get_parcel_handles_multiple_data_items_without_crashing():
     """Should not normally occur for a single parcelId, but must not crash."""
-    client = BoxNowApiClient(_session_returning(
+    client = BoxNowApiClient(
+        _session_returning(
             200,
             {
                 "data": [
@@ -78,7 +77,9 @@ async def test_get_parcel_handles_multiple_data_items_without_crashing():
                     {"id": "OTHER", "state": "missing"},
                 ]
             },
-        ), API_URL)
+        ),
+        API_URL,
+    )
     parcel = await client.async_get_parcel(CODE)
     assert parcel["id"] == CODE
 
