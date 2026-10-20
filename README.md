@@ -60,7 +60,12 @@ A custom Home Assistant integration that tracks your [BoxNow](https://boxnow.gr/
 ### HACS (recommended)
 
 1. Open HACS and search for **BoxNow**.
-2. Install it and restart Home Assistant.
+2. Install it.
+3. Restart Home Assistant if HACS asks you to.
+
+Or click the button below to open it directly in HACS:
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ha-parcel-integrations&repository=ha-boxnow&category=integration)
 
 ### Manual
 
@@ -68,7 +73,9 @@ Copy `custom_components/boxnow` into your `config/custom_components/` folder and
 
 ## Configuration
 
-Add the integration via **Settings → Devices & Services → Add Integration → BoxNow**, and pick your country (Bulgaria, Greece, Croatia or Cyprus) — BoxNow tracking needs no account, so that's the only setup step. All four countries run the identical backend and normalise the same way; the country only picks which host is polled and which tracking link is shown.
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=boxnow)
+
+Or set it up by hand: add the integration via **Settings → Devices & Services → Add Integration → BoxNow**, and pick your country (Bulgaria, Greece, Croatia or Cyprus) — BoxNow tracking needs no account, so that's the only setup step. All four countries run the identical backend and normalise the same way; the country only picks which host is polled and which tracking link is shown.
 
 Then add parcels via the integration's **Configure** dialog, the [`boxnow.track_parcel`](#services) service, or a [dashboard button](examples/dashboards/add_parcel_card.yaml). The tracking code is on your shipping confirmation email or the missed-delivery card.
 
