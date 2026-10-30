@@ -125,6 +125,7 @@ Standard HA removal applies: **Settings → Devices & Services → BoxNow → �
 | `sensor.boxnow_next_delivery` | Earliest expected delivery moment across all active parcels (currently always empty — no confirmed ETA field yet) |
 | `sensor.boxnow_awaiting_pickup` | Parcels ready to collect at a BoxNow locker (currently always `0` — see [Parcel status reference](#parcel-status-reference)) |
 | `sensor.boxnow_delivered_parcels` | Recently delivered parcels (see the retention option) |
+| `calendar.boxnow_deliveries` | Read-only calendar of expected deliveries, no extra API calls |
 | `sensor.boxnow_last_successful_update` | Diagnostic: when BoxNow was last polled successfully |
 
 A delivered parcel moves from its per-parcel sensor to the delivered sensor automatically.
