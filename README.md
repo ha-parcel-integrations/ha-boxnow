@@ -9,10 +9,6 @@
 >
 > 💬 Questions or feedback? Join the discussion on the [Home Assistant community](https://community.home-assistant.io/t/packages-postnl-dhl-nl-dpd-and-gls-parcel-integration/112433/).
 
-> ⚠️ **Pre-1.0 release.** A few of BoxNow's rarer statuses are not mapped
-> yet — see [Parcel status reference](#parcel-status-reference) and
-> [Troubleshooting](#troubleshooting).
-
 A custom Home Assistant integration that tracks your [BoxNow](https://boxnow.gr/) parcels — a locker/pickup-point network running in Bulgaria, Greece, Croatia and Cyprus. No account is needed — you enter the tracking code yourself, just like on the BoxNow website.
 
 ## Contents
