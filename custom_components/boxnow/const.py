@@ -36,17 +36,12 @@ KNOWN_CAPABILITIES = frozenset(
     {"weight", "dimensions", "delivery_window", "pickup_point", "url", "history"}
 )
 
-# No confirmed field supplies weight, dimensions or an ETA window.
-# ``pickup_point`` stays out too: the field names that would carry it only
-# appear on the unconfirmed `final-destination` event, and we must not
-# populate it from a guess (see parcels.py's ``normalize_parcel``). ``url``
-# and ``history`` are both real. Revisit this the moment a locker-ready
-# sample confirms the pickup-point field names.
-CAPABILITIES = frozenset({"url", "history"})
+# No field supplies weight or dimensions.
+CAPABILITIES = frozenset({"delivery_window", "pickup_point", "url", "history"})
 
 # Fields not confirmed yet — the docs site shows them as "awaiting data".
 # Move a field into the declaration above once a real parcel shows it.
-PENDING_CAPABILITIES = frozenset({"pickup_point"})
+PENDING_CAPABILITIES: frozenset[str] = frozenset()
 
 # If this carrier ever grows a second backend with a genuinely different
 # payload shape (a country-specific API, not just a config option), replace

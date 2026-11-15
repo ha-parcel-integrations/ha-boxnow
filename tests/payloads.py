@@ -4,7 +4,8 @@ Shapes mirror the confirmed live envelope: one ``data[]`` item per requested par
 ``state`` and an ``events[]`` list. Field values below are invented — the
 retained research samples had their actual values redacted, only their shape
 kept — but the *keys* are the confirmed ones. ``missing`` and ``delivered``
-top-level states are live-confirmed; the ``event.type`` values
+top-level states are live-confirmed, as are ``in-transit`` and
+``in-final-destination``; the ``event.type`` values
 (``new``/``in-depot``/``final-destination``/``accepted-to-locker``/``delivered``/``missing``)
 are all live-confirmed too (2026-09 sample batch).
 """
@@ -62,10 +63,11 @@ def missing_sample(code: str = MISSING_CODE) -> dict:
 
 
 def active_sample(code: str = ACTIVE_CODE) -> dict:
-    """A parcel still in transit — an unmapped top-level state (unconfirmed)."""
+    """A parcel still in transit, with the day BoxNow expects to deliver it."""
     return {
         "id": code,
-        "state": "in-depot",
+        "state": "in-transit",
+        "etaDate": "2026-04-29T22:30:00.000Z",
         "payment": {"amount": 0, "method": "none"},
         "recipient": "Jane Doe",
         "events": [
@@ -76,14 +78,9 @@ def active_sample(code: str = ACTIVE_CODE) -> dict:
 
 
 def pickup_sample(code: str = ACTIVE_CODE) -> dict:
-    """A parcel whose newest *event* is the unconfirmed pickup-ready one.
-
-    The top-level ``state`` here is deliberately left at an unmapped value —
-    no live sample has ever shown what ``state`` a locker-ready parcel
-    reports, so this fixture cannot claim one. It exists to exercise the
-    ``final-destination`` event-type mapping inside ``history`` only.
-    """
+    """A parcel waiting in the destination locker."""
     sample = active_sample(code)
+    sample["state"] = "in-final-destination"
     sample["events"] = [
         event("final-destination", "2026-04-29T09:00:00Z"),
         *sample["events"],

@@ -25,7 +25,6 @@ from custom_components.boxnow.const import (
     ParcelStatus,
 )
 from custom_components.boxnow.coordinator import BoxNowCoordinator
-from custom_components.boxnow.parcels import normalize_parcel
 
 from .payloads import (
     ACTIVE_CODE,
@@ -414,15 +413,28 @@ async def test_fires_registered_event_for_new_parcel(hass):
     assert events[0].data["barcode"] == OTHER_CODE
 
 
-async def test_delivery_time_changed_never_fires():
-    """No confirmed field supplies an ETA — planned_from/to are always None,
+async def test_delivery_time_changed_fires_when_the_eta_day_moves(hass):
+    entry = _entry_with([{CONF_TRACKING_CODE: ACTIVE_CODE}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    coordinator = BoxNowCoordinator(hass, client, entry)
 
-    so this event can never fire yet. Documented as a deliberate limitation
-    rather than an oversight."""
+    events = []
+    hass.bus.async_listen(
+        f"{DOMAIN}_parcel_delivery_time_changed", lambda e: events.append(e)
+    )
 
-    parcel = normalize_parcel(active_sample())
-    assert parcel["planned_from"] is None
-    assert parcel["planned_to"] is None
+    client.async_get_parcel.return_value = active_sample()
+    await coordinator._async_update_data()
+    later = active_sample()
+    later["etaDate"] = "2026-04-30T22:30:00.000Z"
+    client.async_get_parcel.return_value = later
+    await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert len(events) == 1
+    assert events[0].data["old_planned_from"] == "2026-04-30T00:00:00+03:00"
+    assert events[0].data["new_planned_from"] == "2026-05-01T00:00:00+03:00"
 
 
 async def test_a_parcel_the_delivered_list_leaves_out_still_fires_delivered(hass):

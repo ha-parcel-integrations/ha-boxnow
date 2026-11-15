@@ -15,9 +15,10 @@ alone.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 import logging
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry
 
@@ -49,20 +50,19 @@ NEW_ISSUE_URL = (
 # BoxNow carries *two* separate vocabularies — never merge them into
 # one map:
 #
-# * ``_STATE_MAP`` — the parcel's top-level ``state`` field. ``status`` on the
-#   normalised parcel is keyed off this alone, never off the newest event.
-#   Only ``delivered``/``missing`` are live-confirmed; every other value
-#   (including a hypothetical pickup-ready one) falls to ``unknown`` with a
-#   warning until a real sample confirms it.
-# * ``_EVENT_TYPE_MAP`` — each history entry's ``type`` field. These feed only
-#   the per-event ``history`` status, not the top-level parcel ``status``.
-#   ``new``, ``in-depot``, ``final-destination``, ``delivered`` and ``missing``
-#   are live-confirmed (real households' event logs, 2026-09).
+# * ``_STATE_MAP`` — the parcel's top-level ``state`` field, which drives
+#   ``status`` first. ``in-transit`` and ``in-final-destination`` (waiting in
+#   the destination locker) are the in-flight values; ``delivered`` and
+#   ``missing`` the terminal ones.
+# * ``_EVENT_TYPE_MAP`` — each history entry's ``type`` field: every
+#   ``history`` entry, and the ``status`` fallback when ``state`` is unmapped.
 #   ``accepted-to-locker`` is the *sender* dropping the parcel into a locker or
 #   store to start its journey, so it is ``in_transit`` — not a parcel waiting
 #   for the recipient. Only ``final-destination`` means ready for collection
 #   at the recipient's locker.
 _STATE_MAP: dict[str, ParcelStatus] = {
+    "in-transit": ParcelStatus.IN_TRANSIT,
+    "in-final-destination": ParcelStatus.AT_PICKUP_POINT,
     "delivered": ParcelStatus.DELIVERED,
     "missing": ParcelStatus.PROBLEM,  # terminal non-delivery outcome, not "unknown"
 }
@@ -70,7 +70,9 @@ _STATE_MAP: dict[str, ParcelStatus] = {
 _EVENT_TYPE_MAP: dict[str, ParcelStatus] = {
     "new": ParcelStatus.REGISTERED,
     "in-depot": ParcelStatus.IN_TRANSIT,
+    "in-transit": ParcelStatus.IN_TRANSIT,
     "final-destination": ParcelStatus.AT_PICKUP_POINT,
+    "in-final-destination": ParcelStatus.AT_PICKUP_POINT,
     "accepted-to-locker": ParcelStatus.IN_TRANSIT,
     "delivered": ParcelStatus.DELIVERED,
     "missing": ParcelStatus.PROBLEM,
@@ -118,9 +120,8 @@ def map_parcel_status(state: str | None) -> ParcelStatus:
 def resolve_status(state: str | None, events: list | None) -> ParcelStatus:
     """Return the parcel status: ``state``, else the newest event, else ``unknown``.
 
-    ``state`` only ever carries the terminal outcomes, so a parcel still on its
-    way would otherwise read ``unknown``. The newest event's type is the
-    fallback; only when neither maps does an unrecognised ``state`` warn.
+    The newest event's type is the fallback; only when neither maps does an
+    unrecognised ``state`` warn.
     """
     mapped = _STATE_MAP.get(state) if state else None
     if mapped is not None:
@@ -271,6 +272,31 @@ def _newest_event(events: list | None) -> dict | None:
     return max(dated, key=lambda item: item[0])[1]
 
 
+# etaDate is UTC and lands late in the evening before the delivery day, so the
+# day only comes out right in the country's own time zone.
+_COUNTRY_TZ = {
+    "gr": ZoneInfo("Europe/Athens"),
+    "cy": ZoneInfo("Asia/Nicosia"),
+    "bg": ZoneInfo("Europe/Sofia"),
+    "hr": ZoneInfo("Europe/Zagreb"),
+}
+
+
+def delivery_window(
+    eta: Any, country: str = DEFAULT_COUNTRY
+) -> tuple[str | None, str | None]:
+    """Return the whole day ``etaDate`` names; its time of day is no estimate."""
+    parsed = parse_iso(eta) if isinstance(eta, str) else None
+    if parsed is None:
+        return None, None
+    zone = _COUNTRY_TZ[normalize_country(country)]
+    day = parsed.astimezone(zone).date()
+    return (
+        datetime.combine(day, time.min, tzinfo=zone).isoformat(),
+        datetime.combine(day, time(23, 59, 59), tzinfo=zone).isoformat(),
+    )
+
+
 def tracking_url(
     tracking_code: str | None, country: str = DEFAULT_COUNTRY
 ) -> str | None:
@@ -323,25 +349,21 @@ def normalize_parcel(
       coordinator before this call), corroborated — never overridden — by the
       response's own ``id`` when present; a disagreement is logged once, not
       raised.
-    * ``pickup``/``pickup_point`` are gated on ``status is AT_PICKUP_POINT``
-      (suite convention, matching GLS/DHL-NL/Slovenská Pošta): when true,
-      ``pickup_point`` reads the newest event's ``locationDisplayName``
-      (live-confirmed field, 2026-09 sample batch). In practice this stays
-      ``None`` today — no top-level ``state`` value has ever been observed
-      to map to ``AT_PICKUP_POINT`` (see ``_STATE_MAP``), only the separate
-      ``event.type`` vocabulary reaches it, and that only feeds ``history``
-      — but this wiring needs no further change the moment a real
-      locker-ready ``state`` value is confirmed, mirroring how the
-      ``awaiting_pickup`` sensor is already wired ahead of that.
-    * ``sender``/``receiver``/``weight``/``dimensions``/``planned_from``/
-      ``planned_to`` have no confirmed source field and stay ``None``.
+    * ``pickup``/``pickup_point`` are gated on ``status is AT_PICKUP_POINT``:
+      when true, ``pickup_point`` reads the newest event's
+      ``locationDisplayName``, the destination locker's name.
+    * ``planned_from``/``planned_to`` are the whole day ``etaDate`` names, in
+      the country's time zone, until the parcel is delivered.
+    * ``sender``/``receiver``/``weight``/``dimensions`` have no source field and
+      stay ``None``.
     * ``url`` uses the deep-link template for ``country`` (the config entry's
       selected backend); every supported country was confirmed to return the
       identical payload shape, so nothing else in this function varies by
       country.
     * ``raw`` is an **allowlist**, not the full payload — the confirmed
       payload carries payment and service-related fields this integration
-      must never surface. Only ``id``, ``state`` and a redacted event list
+      must never surface. Only ``id``, ``state``, ``etaDate`` and a redacted
+      event list
       (``createTime``, ``type``, ``postalCode``, ``locationDisplayName``)
       are retained. ``locationDisplayName`` is a locker/hub branch name
       (e.g. "BOX NOW - Sofia"), not recipient PII — still listed in
@@ -359,6 +381,10 @@ def normalize_parcel(
     status = resolve_status(state, events)
     delivered = status is ParcelStatus.DELIVERED
 
+    planned_from, planned_to = (
+        (None, None) if delivered else delivery_window(raw.get("etaDate"), country)
+    )
+
     is_pickup = status is ParcelStatus.AT_PICKUP_POINT
     pickup_point = None
     if is_pickup:
@@ -374,8 +400,8 @@ def normalize_parcel(
         "raw_status": state,
         "delivered": delivered,
         "delivered_at": _newest_event_timestamp(events) if delivered else None,
-        "planned_from": None,
-        "planned_to": None,
+        "planned_from": planned_from,
+        "planned_to": planned_to,
         "pickup": is_pickup,
         "pickup_point": pickup_point,
         "url": tracking_url(barcode, country),
@@ -385,6 +411,7 @@ def normalize_parcel(
         "raw": {
             "id": reported_id,
             "state": state,
+            "etaDate": raw.get("etaDate"),
             "events": [
                 {
                     "createTime": event.get("createTime"),

@@ -413,7 +413,7 @@ def test_normalize_never_leaks_payment_or_recipient_fields_into_raw():
     parcel = normalize_parcel(raw)
     assert "payment" not in parcel["raw"]
     assert "recipient" not in parcel["raw"]
-    assert set(parcel["raw"]) == {"id", "state", "events"}
+    assert set(parcel["raw"]) == {"id", "state", "etaDate", "events"}
     for entry in parcel["raw"]["events"]:
         assert set(entry) == {"createTime", "type", "postalCode", "locationDisplayName"}
 
@@ -491,3 +491,41 @@ def test_tracking_url_accepts_a_legacy_uppercase_country():
     assert (
         tracking_url("EXAMPLE123456", "HR") == "https://boxnow.hr/?track=EXAMPLE123456"
     )
+
+
+def test_eta_is_the_whole_day_in_the_country_time_zone():
+    parcel = normalize_parcel(active_sample())
+    # 22:30 UTC is already the next day in Athens.
+    assert parcel["planned_from"] == "2026-04-30T00:00:00+03:00"
+    assert parcel["planned_to"] == "2026-04-30T23:59:59+03:00"
+    croatia = normalize_parcel(active_sample(), country="hr")
+    assert croatia["planned_from"] == "2026-04-30T00:00:00+02:00"
+
+
+def test_eta_is_dropped_once_delivered_or_unreadable():
+    delivered = delivered_sample()
+    delivered["etaDate"] = "2026-04-29T22:30:00.000Z"
+    assert normalize_parcel(delivered)["planned_from"] is None
+    unreadable = active_sample()
+    unreadable["etaDate"] = "soon"
+    assert normalize_parcel(unreadable)["planned_to"] is None
+
+
+def test_in_flight_states_map_without_the_event_fallback():
+    assert map_parcel_status("in-transit") is ParcelStatus.IN_TRANSIT
+    assert map_parcel_status("in-final-destination") is ParcelStatus.AT_PICKUP_POINT
+    assert map_event_status("in-transit") is ParcelStatus.IN_TRANSIT
+    assert map_event_status("in-final-destination") is ParcelStatus.AT_PICKUP_POINT
+
+
+def test_parcel_in_the_destination_locker_names_it():
+    parcel = normalize_parcel(pickup_sample())
+    assert parcel["status"] is ParcelStatus.AT_PICKUP_POINT
+    assert parcel["pickup"] is True
+    assert parcel["pickup_point"] == "Example Locker Point"
+
+
+def test_unmapped_state_takes_the_newest_event_status():
+    sample = active_sample()
+    sample["state"] = "wait-for-load"
+    assert normalize_parcel(sample)["status"] is ParcelStatus.IN_TRANSIT

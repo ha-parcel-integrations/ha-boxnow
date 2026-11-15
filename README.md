@@ -9,11 +9,9 @@
 >
 > 💬 Questions or feedback? Join the discussion on the [Home Assistant community](https://community.home-assistant.io/t/packages-postnl-dhl-nl-dpd-and-gls-parcel-integration/112433/).
 
-> ⚠️ **Pre-1.0 release.** BoxNow's status vocabulary is only partially
-> confirmed — see [Parcel status reference](#parcel-status-reference) and
-> [Troubleshooting](#troubleshooting). Everything else (the endpoint, the
-> request/response shape, the `delivered`/`missing` statuses) is
-> live-confirmed.
+> ⚠️ **Pre-1.0 release.** A few of BoxNow's rarer statuses are not mapped
+> yet — see [Parcel status reference](#parcel-status-reference) and
+> [Troubleshooting](#troubleshooting).
 
 A custom Home Assistant integration that tracks your [BoxNow](https://boxnow.gr/) parcels — a locker/pickup-point network running in Bulgaria, Greece, Croatia and Cyprus. No account is needed — you enter the tracking code yourself, just like on the BoxNow website.
 
@@ -41,9 +39,9 @@ A custom Home Assistant integration that tracks your [BoxNow](https://boxnow.gr/
 
 - Bulgaria, Greece, Croatia and Cyprus backends — pick your country at setup
 - Track any number of BoxNow parcels by tracking code — no account needed
-- Per-parcel sensor with the canonical status (`delivered` / `problem` / `unknown` for now — see below), the carrier's own status text and a tracking deep-link
+- Per-parcel sensor with the canonical status, the carrier's own status, the expected delivery day, the locker it waits in and a tracking deep-link
 - Summary sensors: incoming parcels, next delivery, awaiting pickup, recently delivered parcels
-- Read-only **Deliveries** calendar (present for parity with every carrier in the family; BoxNow has no confirmed ETA field yet, so it stays empty for now — see [Parcel status reference](#parcel-status-reference))
+- Read-only **Deliveries** calendar with the day BoxNow expects each parcel
 - `boxnow.track_parcel` / `boxnow.untrack_parcel` services, so a dashboard button can add a parcel
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered)
 - Opt-in per-parcel status history
@@ -102,9 +100,7 @@ what your tracked parcels are actually doing:
   AM), so an overnight update is never missed.
 - **Hot (every 15 minutes)** — while any tracked parcel is out for delivery
   today, starting an hour before its delivery window opens (or immediately if
-  no window is known yet — this is the fallback that fires in practice for
-  BoxNow, whose tracking endpoint has never reported a delivery window at
-  all).
+  no window is known yet).
 - **Normal (every 45 minutes)** — for anything else still on its way.
 - **Fully paused** — once every tracked parcel has been delivered, or nothing
   is tracked at all, polling stops until you add a parcel back (adding one
@@ -122,8 +118,8 @@ Standard HA removal applies: **Settings → Devices & Services → BoxNow → �
 |---|---|
 | `sensor.boxnow_incoming_parcels` | Number of active tracked parcels, full list under the `parcels` attribute |
 | `sensor.boxnow_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
-| `sensor.boxnow_next_delivery` | Earliest expected delivery moment across all active parcels (currently always empty — no confirmed ETA field yet) |
-| `sensor.boxnow_awaiting_pickup` | Parcels ready to collect at a BoxNow locker (currently always `0` — see [Parcel status reference](#parcel-status-reference)) |
+| `sensor.boxnow_next_delivery` | Earliest expected delivery day across all active parcels |
+| `sensor.boxnow_awaiting_pickup` | Parcels ready to collect at a BoxNow locker |
 | `sensor.boxnow_delivered_parcels` | Recently delivered parcels (see the retention option) |
 | `calendar.boxnow_deliveries` | Read-only calendar of expected deliveries, no extra API calls |
 | `sensor.boxnow_last_successful_update` | Diagnostic: when BoxNow was last polled successfully |
@@ -132,16 +128,21 @@ A delivered parcel moves from its per-parcel sensor to the delivered sensor auto
 
 ## Parcel status reference
 
-The `status` field is the carrier-agnostic enum shared by the whole integration family. BoxNow's own status vocabulary is only **partially confirmed** right now:
+The `status` field is the carrier-agnostic enum shared by the whole integration family:
 
-| Status | Meaning | Confirmation |
-|---|---|---|
-| `delivered` | Delivered | live-confirmed |
-| `problem` | BoxNow reports the parcel as missing (a terminal non-delivery outcome) | live-confirmed |
-| `unknown` | Not yet scanned, or a status we have not mapped yet | — |
-| `registered` / `in_transit` / `at_pickup_point` / `out_for_delivery` / `returning` | Not yet reachable | **not evidence-backed** — see below |
+| Status | Meaning |
+|---|---|
+| `registered` | BoxNow has the order, the parcel is not handed in yet |
+| `in_transit` | Handed in at a locker or on its way through BoxNow's network |
+| `at_pickup_point` | Waiting in the destination locker, ready to collect |
+| `delivered` | Collected from the locker |
+| `problem` | BoxNow reports the parcel as missing |
+| `unknown` | Not yet scanned, or a status we have not mapped yet |
 
-BoxNow is a locker network, so a `registered` → `in_transit` → `at_pickup_point` → `delivered` journey is *expected*, but no live sample has yet shown what the carrier's top-level status reports for those intermediate steps. Until one does, everything but `delivered`/`missing` normalizes to `unknown` and logs a one-shot warning — please [open an issue](https://github.com/ha-parcel-integrations/ha-boxnow/issues/new?template=unrecognised_status.yml) with the logged value if you see one, it's exactly the data needed to complete the mapping.
+A status we have not mapped yet takes its status from the newest scan we do
+map, and logs a warning once — please [open an issue](https://github.com/ha-parcel-integrations/ha-boxnow/issues/new?template=unrecognised_status.yml) with the logged value if you see one.
+
+The expected delivery is a whole day: BoxNow names the day, not a time.
 
 The carrier's own human-readable text is always available as `raw_status`.
 
@@ -154,7 +155,7 @@ The integration fires these on the event bus (also available as device triggers 
 | `boxnow_parcel_registered` | A new parcel appears in the active list |
 | `boxnow_parcel_status_changed` | A parcel's canonical status changes (`old_status` / `new_status` in the payload), except the final hop to delivered |
 | `boxnow_parcel_delivered` | A parcel is delivered |
-| `boxnow_parcel_delivery_time_changed` | The expected delivery window changes (present for parity; cannot fire yet — no confirmed ETA field) |
+| `boxnow_parcel_delivery_time_changed` | The expected delivery day changes |
 
 Every payload is the full normalised parcel plus the hub's `device_id`. Events are suppressed on the first refresh after start-up.
 
@@ -186,7 +187,7 @@ logger:
 
 ## Troubleshooting
 
-- **A parcel shows `unknown`** — either BoxNow hasn't scanned it yet, the code is wrong, or (very likely right now) it's genuinely in transit and BoxNow's top-level status for that isn't confirmed yet — see [Parcel status reference](#parcel-status-reference). It will pick up automatically once the mapping is extended.
+- **A parcel shows `unknown`** — either BoxNow hasn't scanned it yet, the code is wrong, or it carries a status we have not mapped yet (the log then says which) — see [Parcel status reference](#parcel-status-reference).
 - **A status logs "Unrecognised BoxNow state" or "... event.type"** — please [open an issue](https://github.com/ha-parcel-integrations/ha-boxnow/issues/new?template=unrecognised_status.yml) with the logged line so the mapping can be extended.
 
 ## Related integrations

@@ -43,9 +43,7 @@ This repo follows it exactly.
   in `CONVENTIONS.md`. Say "pickup point", not "ServicePoint"/"parcel
   shop"/"locker", for the generic concept. `ha-dhl-nl`, `ha-dpd`, `ha-gls`,
   `ha-inpost` are reference implementations; `boxnow` here has the
-  sensor wired (filtering on `status`, not the `pickup` bool — see
-  *Carrier-specific notes*) even though no live `state` value reaches
-  `AT_PICKUP_POINT` yet.
+  sensor (filtering on `status`, not the `pickup` bool).
 
 ## Carrier-specific notes
 
@@ -83,63 +81,47 @@ independently captured** (same Cloudflare 403-on-everything caveat as
 before): `boxnow.bg/homepage?track=`, `boxnow.gr/homepage-gr?track=`,
 `boxnow.hr/?track=`, `boxnow.cy/?track=`.
 
-**Pre-1.0 status vocabulary — the central caveat of this repo.** Six
-consented live lookups only ever confirmed two top-level `state` values:
-`delivered` → `ParcelStatus.DELIVERED` and `missing` → `ParcelStatus.PROBLEM`
-(a terminal non-delivery outcome, deliberately not `unknown`). `state` carries
-only those terminal outcomes, so any other parcel takes its status from the
-newest event's `type` via `_EVENT_TYPE_MAP` (`resolve_status`): `new`,
-`in-depot`, `final-destination` and `accepted-to-locker` are live-confirmed.
-Only a parcel where neither the `state` nor the newest event maps normalizes to
-`unknown`, with a one-shot WARNING. Ship at `0.x.y`/a `bN` pre-release only; do
-not bump to `1.0.0` until a locker-ready (or in-transit) sample confirms more of
-the vocabulary.
+**Status vocabulary.** `delivered` → `delivered`, `missing` → `problem`
+(a terminal non-delivery outcome, deliberately not `unknown`),
+`in-transit` → `in_transit` and `in-final-destination` → `at_pickup_point`
+(waiting in the destination locker). An unmapped `state` takes its
+status from the newest event's `type` via `_EVENT_TYPE_MAP`
+(`resolve_status`); only when neither maps does it read `unknown`, with a
+one-shot WARNING.
 
 **Two separate vocabularies — do not merge them.** `parcels.py` keeps
 `_STATE_MAP` (the top-level `state` field, drives `status` first) and
-`_EVENT_TYPE_MAP` (each event's `type`: the `status` fallback and every history entry) apart on purpose:
-- `_STATE_MAP` only has the two live-confirmed entries above.
-- `_EVENT_TYPE_MAP` is live-confirmed (2026-09, real households' own event
-  logs, pulled by the maintainer directly): `new`→`registered`,
-  `in-depot`→`in_transit`, `accepted-to-locker`→`in_transit`,
-  `final-destination`→`at_pickup_point`, `delivered`→`delivered`,
-  `missing`→`problem`. The two locker events mean different things and must
-  never share a mapping: `accepted-to-locker` is the **sender** handing the
-  parcel in at a locker or store (it sits between `new` and `in-depot`, and on
-  a parcel that went `missing` it stood exactly where a drop-off would), while
-  only `final-destination` is the parcel waiting in the **recipient's** locker.
-  An earlier build read `accepted-to-locker` as a second "reached a locker"
-  event and mapped it to `at_pickup_point` — a wrong claim in `history`, not
-  just a stale comment. These all still feed **only** `history` entries, never
-  the top-level `status`.
-- Other event/state codes exist in BOX NOW's own vocabulary (for instance
-  `in-final-destination`, `in-transit`, `wait-for-load`, `returned`,
-  `expired`) and are deliberately **not** mapped until a real parcel of ours
-  reports them: they fall to `unknown` plus the one-shot WARNING.
-
-This means a parcel's top-level `status` can currently only ever come back as
-`delivered`, `problem`, or `unknown` — never `at_pickup_point`, even though
-BoxNow is a locker network and a real parcel obviously does reach one; no
-live sample has yet shown what `state` value a still-uncollected, locker-ready
-parcel reports. The `awaiting_pickup` sensor is wired anyway (filtering on
-`status == ParcelStatus.AT_PICKUP_POINT`, not on the `pickup` bool) so it
-lights up the moment `_STATE_MAP` gains a confirmed entry for the
-locker-ready state — no other code change needed then.
+`_EVENT_TYPE_MAP` (each event's `type`: the `status` fallback and every
+history entry) apart on purpose. They overlap in spelling, not always in
+meaning:
+- `_EVENT_TYPE_MAP`: `new`→`registered`, `accepted-to-locker`→`in_transit`,
+  `in-depot`/`in-transit`→`in_transit`,
+  `final-destination`/`in-final-destination`→`at_pickup_point`,
+  `delivered`→`delivered`, `missing`→`problem`.
+- The two locker events mean different things and must never share a mapping:
+  `accepted-to-locker` is the **sender** handing the parcel in at a locker or
+  store (it sits between `new` and `in-depot`), while only `final-destination`
+  is the parcel waiting in the **recipient's** locker. An earlier build mapped
+  `accepted-to-locker` to `at_pickup_point` — a wrong claim, not a stale
+  comment.
+- Still unmapped on purpose: `wait-for-load`, `returned`, `expired` and the
+  cancellations. What they mean for the recipient is not established.
 
 **`pickup`/`pickup_point` are gated on `status is AT_PICKUP_POINT`**,
-matching GLS/DHL-NL/Slovenská Pošta — not hardcoded off. A parcel
-whose newest event is `final-destination` reaches `AT_PICKUP_POINT` through the
-event fallback. When `is_pickup` is true, `pickup_point`
-reads the newest event's `locationDisplayName` (live-confirmed field, 2026-09
-sample batch — a locker/hub branch name). This mirrors the `awaiting_pickup`
-sensor's forward-wiring: no further code change needed once `_STATE_MAP`
-gains a locker-ready entry.
+matching GLS/DHL-NL/Slovenská Pošta. `pickup_point` reads the newest event's
+`locationDisplayName`, the destination locker's name. The `awaiting_pickup`
+sensor filters on `status`, not on the `pickup` bool.
+
+**ETA is a whole day.** `etaDate` is a UTC timestamp late in the evening
+before the expected day; its time of day is no estimate. `delivery_window()`
+converts it to the **country's own** time zone (Croatia is CET, the rest EET)
+and publishes 00:00–23:59:59 of that day. Dropped once delivered.
 
 **`raw` is an allowlist, not the full payload.** The confirmed response
 carries payment and service-related fields (exact names never captured —
 only their presence was noted) alongside origin/destination data.
-`normalize_parcel` copies through only `id`, `state`, and a redacted event
-list (`createTime`, `type`, `postalCode`, `locationDisplayName`) — never the
+`normalize_parcel` copies through only `id`, `state`, `etaDate` and a
+redacted event list (`createTime`, `type`, `postalCode`, `locationDisplayName`) — never the
 full raw dict. `locationDisplayName` is a locker/hub branch name
 (e.g. "BOX NOW - Sofia"), not recipient PII, but stays in
 `diagnostics.py`'s `TO_REDACT` out of caution — that redaction is defence in
@@ -153,12 +135,8 @@ prefers that over the response's own `id` — corroborating, never overriding
 — logging a one-shot warning on disagreement. The response never legitimately
 carries its own `parcelId` key, so this can't collide with a real field.
 
-**No confirmed ETA, weight, dimensions, sender or receiver field.**
-`planned_from`/`planned_to`/`weight`/`dimensions`/`sender`/`receiver` are
-always `None`; `CAPABILITIES` in `const.py` only declares `url` and
-`history`. The `_parcel_delivery_time_changed` event and the **Deliveries**
-calendar are wired (suite parity) but can never fire/populate until a
-confirmed ETA field turns up.
+**No weight, dimensions, sender or receiver field.** Those stay `None`;
+`CAPABILITIES` declares `delivery_window`, `pickup_point`, `url` and `history`.
 
 **`url` deep-link format: see the country-selector section above** —
 `BOXNOW_TRACKING_URLS` replaced the earlier single `TRACKING_URL` constant
