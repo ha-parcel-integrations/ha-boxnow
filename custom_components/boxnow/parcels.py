@@ -15,7 +15,7 @@ alone.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
 import logging
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -238,23 +238,6 @@ def build_history(
     return ordered[-max_events:]
 
 
-def _newest_event_timestamp(events: list | None) -> str | None:
-    """Return the newest parseable ``createTime`` among ``events``, if any."""
-    parsed: list[tuple[datetime, str]] = []
-    for event in events or []:
-        if not isinstance(event, dict):
-            continue
-        timestamp = to_iso_timestamp(event.get("createTime"))
-        if not timestamp:
-            continue
-        moment = parse_iso(timestamp)
-        if moment is not None:
-            parsed.append((moment, timestamp))
-    if not parsed:
-        return None
-    return max(parsed, key=lambda item: item[0])[1]
-
-
 def _newest_event(events: list | None) -> dict | None:
     """Return the newest event by ``createTime``, or ``None`` if none parse."""
     dated: list[tuple[datetime, dict]] = []
@@ -290,11 +273,7 @@ def delivery_window(
     if parsed is None:
         return None, None
     zone = _COUNTRY_TZ[normalize_country(country)]
-    day = parsed.astimezone(zone).date()
-    return (
-        datetime.combine(day, time.min, tzinfo=zone).isoformat(),
-        datetime.combine(day, time(23, 59, 59), tzinfo=zone).isoformat(),
-    )
+    return planned_window(parsed.astimezone(zone).date(), None, zone=zone)
 
 
 def tracking_url(
@@ -331,6 +310,103 @@ def _warn_barcode_mismatch(queried: str, reported: str) -> None:
     )
 
 
+def _moment(value: Any, zone: tzinfo) -> tuple[datetime, bool, str] | None:
+    """Return ``(aware datetime, date_only, text)`` for a carrier time, or ``None``.
+
+    A naive time or a bare date gets ``zone``; an aware time keeps its offset
+    and, when it came in as a string, its own spelling.
+    """
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, date):
+        moment = datetime.combine(value, time.min, tzinfo=zone)
+        return moment, True, moment.isoformat()
+    elif isinstance(value, str) and value:
+        try:
+            if len(value) == 10:
+                moment = datetime.combine(
+                    date.fromisoformat(value), time.min, tzinfo=zone
+                )
+                return moment, True, moment.isoformat()
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+        if parsed.tzinfo:
+            return parsed, False, value
+    else:
+        return None
+    moment = parsed if parsed.tzinfo else parsed.replace(tzinfo=zone)
+    return moment, False, moment.isoformat()
+
+
+def _end_of_day(moment: datetime, zone: tzinfo) -> datetime:
+    local = moment.astimezone(zone)
+    return datetime.combine(local.date(), time(23, 59, 59), tzinfo=zone)
+
+
+def planned_window(
+    start: Any, end: Any, *, zone: tzinfo
+) -> tuple[str | None, str | None]:
+    """Return ``(planned_from, planned_to)`` in the canonical window shape.
+
+    ``start`` and ``end`` are ISO strings, dates or datetimes, or ``None``; an
+    epoch number must be converted first (see ``to_iso_timestamp``). A window
+    keeps both ends. One moment with a time ends at ``23:59:59`` the same local
+    day; a date covers ``00:00:00`` to ``23:59:59``; two dates run from the
+    first day's start to the last day's end. Equal values are one moment,
+    reversed values are swapped, and ``planned_to`` is never set without
+    ``planned_from``. ``zone`` is the carrier's own zone: it dates naive times
+    and bare dates and decides which day a moment ends on, so a ``Z`` moment
+    still ends on the carrier's local day. When nothing is left of that day
+    after the moment, there is no ``planned_to``.
+    """
+    first = _moment(start, zone)
+    last = _moment(end, zone)
+    if first is None:
+        first, last = last, None
+    if first is None:
+        return None, None
+
+    def closing(moment: tuple[datetime, bool, str]) -> datetime:
+        return _end_of_day(moment[0], zone) if moment[1] else moment[0]
+
+    if last is not None and closing(last) < first[0]:
+        first, last = last, first
+    if last is not None and closing(last) == first[0]:
+        last = None
+
+    if last is None:
+        end_of_day = _end_of_day(first[0], zone)
+        return first[2], end_of_day.isoformat() if end_of_day > first[0] else None
+    return first[2], closing(last).isoformat() if last[1] else last[2]
+
+
+_NO_WINDOW_STATUSES = frozenset(
+    {ParcelStatus.AT_PICKUP_POINT, ParcelStatus.RETURNING, ParcelStatus.DELIVERED}
+)
+
+
+def planned_for_status(
+    status: ParcelStatus, planned_from: str | None, planned_to: str | None
+) -> tuple[str | None, str | None]:
+    """Empty the delivery window once the parcel is at its destination or done."""
+    if status in _NO_WINDOW_STATUSES:
+        return None, None
+    return planned_from, planned_to
+
+
+def _newest_event_with_status(events: list, status: ParcelStatus) -> dict | None:
+    """Return the newest event whose type maps to ``status``, or ``None``."""
+    return _newest_event(
+        [
+            event
+            for event in events
+            if isinstance(event, dict)
+            and _EVENT_TYPE_MAP.get(event.get("type") or "") is status
+        ]
+    )
+
+
 def normalize_parcel(
     raw: dict, *, country: str = DEFAULT_COUNTRY, include_history: bool = False
 ) -> dict:
@@ -349,11 +425,12 @@ def normalize_parcel(
       coordinator before this call), corroborated — never overridden — by the
       response's own ``id`` when present; a disagreement is logged once, not
       raised.
-    * ``pickup``/``pickup_point`` are gated on ``status is AT_PICKUP_POINT``:
-      when true, ``pickup_point`` reads the newest event's
-      ``locationDisplayName``, the destination locker's name.
+    * ``pickup`` is always true: BoxNow only delivers to lockers.
+      ``pickup_point`` is the destination locker's ``locationDisplayName``
+      from the arrival event, ``None`` until the parcel has reached it.
+    * ``delivered_at`` is the ``delivered`` event's timestamp.
     * ``planned_from``/``planned_to`` are the whole day ``etaDate`` names, in
-      the country's time zone, until the parcel is delivered.
+      the country's time zone, until the parcel is at the locker or delivered.
     * ``sender``/``receiver``/``weight``/``dimensions`` have no source field and
       stay ``None``.
     * ``url`` uses the deep-link template for ``country`` (the config entry's
@@ -381,15 +458,16 @@ def normalize_parcel(
     status = resolve_status(state, events)
     delivered = status is ParcelStatus.DELIVERED
 
-    planned_from, planned_to = (
-        (None, None) if delivered else delivery_window(raw.get("etaDate"), country)
+    planned_from, planned_to = planned_for_status(
+        status, *delivery_window(raw.get("etaDate"), country)
     )
 
-    is_pickup = status is ParcelStatus.AT_PICKUP_POINT
-    pickup_point = None
-    if is_pickup:
-        newest = _newest_event(events)
-        pickup_point = (newest or {}).get("locationDisplayName") or None
+    arrival = _newest_event_with_status(events, ParcelStatus.AT_PICKUP_POINT)
+    pickup_point = (arrival or {}).get("locationDisplayName") or None
+    delivered_at = None
+    if delivered:
+        delivery = _newest_event_with_status(events, ParcelStatus.DELIVERED)
+        delivered_at = to_iso_timestamp((delivery or {}).get("createTime"))
 
     return {
         "carrier": "BoxNow",
@@ -399,10 +477,10 @@ def normalize_parcel(
         "status": status,
         "raw_status": state,
         "delivered": delivered,
-        "delivered_at": _newest_event_timestamp(events) if delivered else None,
+        "delivered_at": delivered_at,
         "planned_from": planned_from,
         "planned_to": planned_to,
-        "pickup": is_pickup,
+        "pickup": True,
         "pickup_point": pickup_point,
         "url": tracking_url(barcode, country),
         "weight": None,

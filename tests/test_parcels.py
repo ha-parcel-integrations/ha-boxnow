@@ -353,16 +353,18 @@ def test_normalize_pickup_point_populates_once_state_confirms_at_pickup_point(
 
     entry, `pickup`/`pickup_point` populate with no further code change —
     mirroring how the `awaiting_pickup` sensor is already wired ahead of
-    that confirmation. `pickup_point` reads the newest event's
-    `locationDisplayName`."""
+    that confirmation. With no arrival event, `pickup_point` stays `None`:
+    the newest event can be an in-depot scan or the sender's drop-off."""
     monkeypatch.setitem(
         parcels_module._STATE_MAP, "at-locker", ParcelStatus.AT_PICKUP_POINT
     )
     raw = pickup_sample()
     raw["state"] = "at-locker"
+    for scan in raw["events"]:
+        scan["type"] = "unmapped-scan"
     parcel = normalize_parcel(raw)
     assert parcel["pickup"] is True
-    assert parcel["pickup_point"] == "Example Locker Point"
+    assert parcel["pickup_point"] is None
 
 
 def test_normalize_barcode_prefers_queried_code_and_warns_on_mismatch(caplog):

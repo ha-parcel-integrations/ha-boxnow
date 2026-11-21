@@ -36,7 +36,7 @@ A custom Home Assistant integration that tracks your [BoxNow](https://boxnow.gr/
 - Bulgaria, Greece, Croatia and Cyprus backends — pick your country at setup
 - Track any number of BoxNow parcels by tracking code — no account needed
 - Per-parcel sensor with the canonical status, the carrier's own status, the expected delivery day, the locker it waits in and a tracking deep-link
-- Summary sensors: incoming parcels, next delivery, awaiting pickup, recently delivered parcels
+- Summary sensors: incoming parcels, next delivery, en route to pickup point, awaiting pickup, recently delivered parcels
 - Read-only **Deliveries** calendar with the day BoxNow expects each parcel
 - `boxnow.track_parcel` / `boxnow.untrack_parcel` services, so a dashboard button can add a parcel
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered)
@@ -115,6 +115,7 @@ Standard HA removal applies: **Settings → Devices & Services → BoxNow → �
 | `sensor.boxnow_incoming_parcels` | Number of active tracked parcels, full list under the `parcels` attribute |
 | `sensor.boxnow_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
 | `sensor.boxnow_next_delivery` | Earliest expected delivery day across all active parcels |
+| `sensor.boxnow_en_route_to_pickup_point` | Active parcels on their way to a BoxNow locker, not yet there |
 | `sensor.boxnow_awaiting_pickup` | Parcels ready to collect at a BoxNow locker |
 | `sensor.boxnow_delivered_parcels` | Recently delivered parcels (see the retention option) |
 | `calendar.boxnow_deliveries` | Read-only calendar of expected deliveries, no extra API calls |

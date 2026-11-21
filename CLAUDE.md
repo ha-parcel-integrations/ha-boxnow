@@ -38,12 +38,15 @@ This repo follows it exactly.
   summary+diagnostic sensors. Add a new non-parcel sensor's unique_id to the set.
 - **Per-parcel sensors are removed by the summary sensor** via
   `entity_registry.async_remove` (self-removal races and leaves ghosts).
-- **If this carrier can reach `ParcelStatus.AT_PICKUP_POINT` from a real raw
-  status/code**, it needs an `awaiting_pickup` sensor — see *Parcel contract*
-  in `CONVENTIONS.md`. Say "pickup point", not "ServicePoint"/"parcel
-  shop"/"locker", for the generic concept. `ha-dhl-nl`, `ha-dpd`, `ha-gls`,
-  `ha-inpost` are reference implementations; `boxnow` here has the
-  sensor (filtering on `status`, not the `pickup` bool).
+- **The pickup-point summaries are a pair.** A carrier that can deliver to a
+  pickup point or locker exposes both `en_route_to_pickup_point` and
+  `awaiting_pickup`, even before a real parcel has shown the status or flag
+  (they read 0 until then; record it in `PENDING_*`). A carrier without pickup
+  points exposes neither and keeps `pickup` constantly False.
+  See *Parcel contract* in `CONVENTIONS.md`. Say "pickup point", not
+  "ServicePoint"/"parcel shop"/"locker", for the generic concept; the
+  example carrier demonstrates both canonical sensors.
+  `boxnow` here has both pickup sensors.
 
 ## Carrier-specific notes
 
@@ -107,15 +110,18 @@ meaning:
 - Still unmapped on purpose: `wait-for-load`, `returned`, `expired` and the
   cancellations. What they mean for the recipient is not established.
 
-**`pickup`/`pickup_point` are gated on `status is AT_PICKUP_POINT`**,
-matching GLS/DHL-NL/Slovenská Pošta. `pickup_point` reads the newest event's
-`locationDisplayName`, the destination locker's name. The `awaiting_pickup`
-sensor filters on `status`, not on the `pickup` bool.
+**`pickup` is constant `True`.** BoxNow only delivers to lockers, so every
+parcel is a pickup parcel from registration, regardless of status.
+`pickup_point` is the `locationDisplayName` of the arrival event (the
+destination locker), `None` until the parcel reaches it, and kept once
+delivered. `en_route_to_pickup_point` is the standard template sensor (`pickup`
+true, status not `at_pickup_point`/`returning`); `awaiting_pickup` filters on
+`status`. `delivered_at` is the `delivered` event's timestamp, else `None`.
 
 **ETA is a whole day.** `etaDate` is a UTC timestamp late in the evening
 before the expected day; its time of day is no estimate. `delivery_window()`
 converts it to the **country's own** time zone (Croatia is CET, the rest EET)
-and publishes 00:00–23:59:59 of that day. Dropped once delivered.
+and publishes 00:00–23:59:59 of that day. Emptied at `at_pickup_point` and once delivered.
 
 **`raw` is an allowlist, not the full payload.** The confirmed response
 carries payment and service-related fields (exact names never captured —
