@@ -39,6 +39,7 @@ A custom Home Assistant integration that tracks your [BoxNow](https://boxnow.gr/
 - Summary sensors: incoming parcels, next delivery, en route to pickup point, awaiting pickup, recently delivered parcels
 - Read-only **Deliveries** calendar with the day BoxNow expects each parcel
 - `boxnow.track_parcel` / `boxnow.untrack_parcel` services, so a dashboard button can add a parcel
+- A `contents` field on every parcel, set in your own words with the `boxnow.update_contents` service
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered)
 - Opt-in per-parcel status history
 - Manual refresh button and a diagnostic last-update sensor
@@ -160,8 +161,11 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 | Service | Fields | Description |
 |---|---|---|
-| `boxnow.track_parcel` | `tracking_code` | Start tracking a parcel |
+| `boxnow.track_parcel` | `tracking_code`, `contents` (optional) | Start tracking a parcel, optionally noting what is in it |
 | `boxnow.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
+| `boxnow.update_contents` | `tracking_code`, `contents` | Set what is in a parcel, tracked or not; an empty `contents` clears it |
+
+The `contents` text is stored locally, never sent to BoxNow, and fills the parcel's `contents` field; it titles the parcel's calendar event and shows on the next-delivery sensor.
 
 ## Examples
 

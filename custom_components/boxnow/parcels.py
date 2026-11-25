@@ -474,6 +474,7 @@ def normalize_parcel(
         "barcode": barcode,
         "sender": None,
         "receiver": None,
+        "contents": None,
         "status": status,
         "raw_status": state,
         "delivered": delivered,

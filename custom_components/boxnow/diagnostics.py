@@ -27,6 +27,7 @@ TO_REDACT = {
     "barcode",
     "sender",
     "receiver",
+    "contents",
     "url",
     # the tracking code itself, as it appears in the raw payload
     "parcelId",
